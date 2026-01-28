@@ -2,7 +2,11 @@
 set -e
 
 # Tuivio Plugin Installation Script
-# Builds the MCP server and prepares the plugin for use with Claude Code
+# Installs the MCP server and prepares the plugin for use with Claude Code
+#
+# Installation methods:
+#   1. Clone and install:  git clone git@github.com:olesho/tuivio.git && cd tuivio && ./install-plugin.sh
+#   2. Direct npm install: npm install -g git+ssh://git@github.com:olesho/tuivio.git
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_DIR="$SCRIPT_DIR/tuivio-plugin"
@@ -39,12 +43,24 @@ print_info() {
 usage() {
     echo "Usage: $0 [options]"
     echo ""
-    echo "Builds the Tuivio MCP server and configures the plugin."
+    echo "Installs the Tuivio MCP server and configures the plugin for Claude Code."
     echo ""
     echo "Options:"
-    echo "  --help    Show this help message"
+    echo "  --global    Install globally via npm link (recommended)"
+    echo "  --local     Use local paths (for development)"
+    echo "  --help      Show this help message"
     echo ""
-    echo "After running this script, start Claude Code with:"
+    echo "Installation from git repository:"
+    echo ""
+    echo "  # Method 1: Clone and install (recommended)"
+    echo "  git clone git@github.com:olesho/tuivio.git"
+    echo "  cd tuivio"
+    echo "  ./install-plugin.sh --global"
+    echo ""
+    echo "  # Method 2: Direct npm install"
+    echo "  npm install -g git+ssh://git@github.com:olesho/tuivio.git"
+    echo ""
+    echo "After installation, start Claude Code with:"
     echo "  claude --plugin-dir $PLUGIN_DIR"
     echo ""
     exit 0
@@ -82,7 +98,7 @@ check_prerequisites() {
     fi
 }
 
-# Build the MCP server if needed
+# Build the MCP server
 build_server() {
     print_step "Building MCP server..."
 
@@ -94,7 +110,7 @@ build_server() {
         npm install
     fi
 
-    # Check if dist exists and is up to date
+    # Build if needed
     if [ ! -d "$DIST_DIR" ] || [ ! -f "$DIST_DIR/index.js" ]; then
         print_step "Compiling TypeScript..."
         npm run build
@@ -119,9 +135,26 @@ build_server() {
     print_success "MCP server ready at $DIST_DIR/index.js"
 }
 
-# Configure the plugin with absolute paths
-configure_plugin() {
-    print_step "Configuring plugin..."
+# Install globally via npm link
+install_global() {
+    print_step "Installing tuivio-server globally..."
+
+    cd "$SCRIPT_DIR"
+
+    # Link the package globally
+    npm link
+
+    # Verify the command is available
+    if command -v tuivio-server &> /dev/null; then
+        print_success "tuivio-server command is now available globally"
+    else
+        print_warning "tuivio-server not found in PATH. You may need to restart your shell."
+    fi
+}
+
+# Configure the plugin for local development (absolute paths)
+configure_plugin_local() {
+    print_step "Configuring plugin for local development..."
 
     # Update .mcp.json with absolute path to built server
     local MCP_CONFIG="$PLUGIN_DIR/.mcp.json"
@@ -130,12 +163,38 @@ configure_plugin() {
   "mcpServers": {
     "tui": {
       "command": "node",
-      "args": ["$DIST_DIR/index.js"]
+      "args": [
+        "$DIST_DIR/index.js",
+        "--live-file", "./tuivio-live.txt",
+        "--log-file", "./tuivio.log"
+      ]
     }
   }
 }
 EOF
-    print_success "Updated MCP config with absolute server path"
+    print_success "Configured MCP with local absolute path"
+}
+
+# Configure the plugin for global installation (uses tuivio-server command)
+configure_plugin_global() {
+    print_step "Configuring plugin for global installation..."
+
+    # Update .mcp.json to use the global command
+    local MCP_CONFIG="$PLUGIN_DIR/.mcp.json"
+    cat > "$MCP_CONFIG" << EOF
+{
+  "mcpServers": {
+    "tui": {
+      "command": "tuivio-server",
+      "args": [
+        "--live-file", "./tuivio-live.txt",
+        "--log-file", "./tuivio.log"
+      ]
+    }
+  }
+}
+EOF
+    print_success "Configured MCP to use global tuivio-server command"
 }
 
 # Verify the plugin is ready
@@ -190,19 +249,44 @@ verify_plugin() {
 
 # Main
 main() {
-    # Check for help flag
-    if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
-        usage
-    fi
+    local INSTALL_MODE="global"
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --help|-h)
+                usage
+                ;;
+            --global)
+                INSTALL_MODE="global"
+                shift
+                ;;
+            --local)
+                INSTALL_MODE="local"
+                shift
+                ;;
+            *)
+                print_error "Unknown option: $1"
+                usage
+                ;;
+        esac
+    done
 
     echo "Tuivio TUI Development Plugin Setup"
     echo "==================================="
     echo "Plugin: $PLUGIN_DIR"
+    echo "Mode: $INSTALL_MODE"
     echo ""
 
     check_prerequisites
     build_server
-    configure_plugin
+
+    if [ "$INSTALL_MODE" = "global" ]; then
+        install_global
+        configure_plugin_global
+    else
+        configure_plugin_local
+    fi
 
     if verify_plugin; then
         echo ""

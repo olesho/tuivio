@@ -1,6 +1,5 @@
 tuivio-live.txt
 tuivio.log
-tuivio-plugin/
 node_modules/
 dist/
 .claude/

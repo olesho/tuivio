@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "tui": {
+      "command": "tuivio-server",
+      "args": [
+        "--live-file", "./tuivio-live.txt",
+        "--log-file", "./tuivio.log"
+      ]
+    }
+  }
+}

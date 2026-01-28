@@ -4,12 +4,22 @@
   "description": "MCP server for controlling Terminal UI applications",
   "main": "dist/index.js",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/olesho/tuivio.git"
+  },
   "bin": {
     "tuivio-server": "./bin/tuivio-server.js"
   },
+  "files": [
+    "dist",
+    "bin",
+    "tuivio-plugin",
+    "install-plugin.sh"
+  ],
   "scripts": {
     "build": "tsc",
-    "postinstall": "npm run build",
+    "prepare": "npm run build",
     "start": "node dist/index.js",
     "dev": "npm run dev:watch & npm run dev:server",
     "dev:watch": "tsc --watch",
