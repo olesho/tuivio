@@ -1,0 +1,8 @@
+tuivo-live.txt
+tuivo.log
+tuivo-plugin/
+node_modules/
+dist/
+.claude/
+.beads/
+*.swp

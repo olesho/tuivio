@@ -1,0 +1,7 @@
+{
+  "watch": ["dist"],
+  "ext": "js",
+  "ignore": ["dist/sample-tui/*"],
+  "exec": "node dist/index.js --live-file tuivo-live.txt",
+  "delay": 500
+}
