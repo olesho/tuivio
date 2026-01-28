@@ -25,7 +25,7 @@ let rows = 24;
 let cwd: string | undefined;
 let liveDisplay = false;
 let liveFilePath: string | undefined;
-let logFilePath: string = './tuivo.log';
+let logFilePath: string = './tuivio.log';
 
 for (let i = 0; i < args.length; i++) {
   const arg = args[i];

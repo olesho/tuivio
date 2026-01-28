@@ -1,6 +1,6 @@
-# Installing Tuivo Plugin for Claude Code
+# Installing Tuivio Plugin for Claude Code
 
-This guide explains how to install and configure the Tuivo TUI Development plugin for Claude Code.
+This guide explains how to install and configure the Tuivio TUI Development plugin for Claude Code.
 
 ## Prerequisites
 
@@ -13,7 +13,7 @@ This guide explains how to install and configure the Tuivo TUI Development plugi
 Use the installation script to build and configure the plugin:
 
 ```bash
-cd /path/to/tuivo
+cd /path/to/tuivio
 ./install-plugin.sh
 ```
 
@@ -25,14 +25,14 @@ The script will:
 Then start Claude Code with the plugin:
 
 ```bash
-claude --plugin-dir /path/to/tuivo/tuivo-plugin
+claude --plugin-dir /path/to/tuivio/tuivio-plugin
 ```
 
 **Tip:** Add an alias to your shell profile for convenience:
 
 ```bash
 # Add to ~/.bashrc or ~/.zshrc
-alias claude-tui='claude --plugin-dir /path/to/tuivo/tuivo-plugin'
+alias claude-tui='claude --plugin-dir /path/to/tuivio/tuivio-plugin'
 ```
 
 ## Manual Installation
@@ -40,7 +40,7 @@ alias claude-tui='claude --plugin-dir /path/to/tuivo/tuivo-plugin'
 ### 1. Build the MCP Server
 
 ```bash
-cd /path/to/tuivo
+cd /path/to/tuivio
 npm install
 npm run build
 ```
@@ -49,14 +49,14 @@ This compiles the TypeScript source to `dist/`.
 
 ### 2. Configure the MCP Server Path
 
-Edit `tuivo-plugin/.mcp.json` to use the absolute path:
+Edit `tuivio-plugin/.mcp.json` to use the absolute path:
 
 ```json
 {
   "mcpServers": {
     "tui": {
       "command": "node",
-      "args": ["/path/to/tuivo/dist/index.js"]
+      "args": ["/path/to/tuivio/dist/index.js"]
     }
   }
 }
@@ -65,7 +65,7 @@ Edit `tuivo-plugin/.mcp.json` to use the absolute path:
 ### 3. Start Claude Code with the Plugin
 
 ```bash
-claude --plugin-dir /path/to/tuivo/tuivo-plugin
+claude --plugin-dir /path/to/tuivio/tuivio-plugin
 ```
 
 You can load the plugin in any project directory - just run the above command from wherever you're working.
@@ -82,23 +82,23 @@ Once installed, you can verify the plugin is working:
 
 2. **Test with a simple TUI:**
    ```
-   /tui-run node /path/to/tuivo/dist/sample-tui/index.js
+   /tui-run node /path/to/tuivio/dist/sample-tui/index.js
    ```
 
 3. **Check the agent is available:**
    ```
-   Ask Claude to use the tuivo-dev agent
+   Ask Claude to use the tuivio-dev agent
    ```
 
 ## Plugin Structure
 
 ```
-tuivo-plugin/
+tuivio-plugin/
 ├── .claude-plugin/
 │   └── plugin.json      # Plugin manifest
 ├── .mcp.json            # MCP server configuration
 ├── agents/
-│   └── tuivo-dev.md     # TUI development agent
+│   └── tuivio-dev.md     # TUI development agent
 └── skills/
     ├── tui-run/         # Launch TUI skill
     ├── tui-inspect/     # Inspect screen skill
@@ -107,7 +107,7 @@ tuivo-plugin/
 
 ## Available Features
 
-### Agent: tuivo-dev
+### Agent: tuivio-dev
 
 A specialized agent for TUI development with visual feedback. Use it when developing, testing, or debugging terminal user interface applications.
 
@@ -140,12 +140,12 @@ A specialized agent for TUI development with visual feedback. Use it when develo
 
 1. Make sure you're using `--plugin-dir` flag when starting Claude Code
 2. Verify the plugin path is absolute and correct
-3. Check that `tuivo-plugin/.claude-plugin/plugin.json` exists
+3. Check that `tuivio-plugin/.claude-plugin/plugin.json` exists
 
 ### MCP server fails to start
 
 1. Ensure the project is built: `npm run build`
-2. Check that `tuivo-plugin/.mcp.json` contains the correct absolute path
+2. Check that `tuivio-plugin/.mcp.json` contains the correct absolute path
 3. Check node-pty permissions (macOS):
    ```bash
    chmod +x node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper

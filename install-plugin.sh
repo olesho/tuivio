@@ -1,11 +1,11 @@
 #!/bin/bash
 set -e
 
-# Tuivo Plugin Installation Script
+# Tuivio Plugin Installation Script
 # Builds the MCP server and prepares the plugin for use with Claude Code
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PLUGIN_DIR="$SCRIPT_DIR/tuivo-plugin"
+PLUGIN_DIR="$SCRIPT_DIR/tuivio-plugin"
 DIST_DIR="$SCRIPT_DIR/dist"
 
 # Colors for output
@@ -39,7 +39,7 @@ print_info() {
 usage() {
     echo "Usage: $0 [options]"
     echo ""
-    echo "Builds the Tuivo MCP server and configures the plugin."
+    echo "Builds the Tuivio MCP server and configures the plugin."
     echo ""
     echo "Options:"
     echo "  --help    Show this help message"
@@ -195,7 +195,7 @@ main() {
         usage
     fi
 
-    echo "Tuivo TUI Development Plugin Setup"
+    echo "Tuivio TUI Development Plugin Setup"
     echo "==================================="
     echo "Plugin: $PLUGIN_DIR"
     echo ""
