@@ -1,48 +1,30 @@
 {
   "name": "tuivio",
   "version": "1.0.0",
-  "description": "MCP server for controlling Terminal UI applications",
-  "main": "dist/index.js",
+  "description": "MCP server and Claude Code plugin for TUI application interaction",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/olesho/tuivio.git"
-  },
-  "bin": {
-    "tuivio-server": "./bin/tuivio-server.js"
+    "url": "git+ssh://git@github.com:olesho/tuivio.git"
   },
   "files": [
-    "dist",
-    "bin",
-    "tuivio-plugin",
+    "server",
+    "plugin",
     "install-plugin.sh"
   ],
   "scripts": {
-    "build": "tsc",
-    "prepare": "npm run build",
-    "start": "node dist/index.js",
-    "dev": "npm run dev:watch & npm run dev:server",
-    "dev:watch": "tsc --watch",
-    "dev:server": "nodemon",
-    "sample-tui": "node dist/sample-tui/index.js"
+    "build": "cd server && npm run build",
+    "install:server": "cd server && npm install",
+    "start": "cd server && npm start",
+    "dev": "cd server && npm run dev",
+    "setup": "./install-plugin.sh"
   },
   "keywords": [
     "mcp",
     "tui",
     "terminal",
-    "claude-code"
+    "claude-code",
+    "model-context-protocol"
   ],
-  "license": "MIT",
-  "dependencies": {
-    "@anthropic-ai/sdk": "^0.39.0",
-    "@modelcontextprotocol/sdk": "^1.0.0",
-    "blessed": "^0.1.81",
-    "node-pty": "^1.0.0"
-  },
-  "devDependencies": {
-    "@types/blessed": "^0.1.25",
-    "@types/node": "^22.0.0",
-    "nodemon": "^3.1.11",
-    "typescript": "^5.7.0"
-  }
+  "license": "MIT"
 }

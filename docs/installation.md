@@ -19,20 +19,20 @@ cd /path/to/tuivio
 
 The script will:
 1. Check prerequisites (Node.js v18+, npm)
-2. Build the MCP server
+2. Build the MCP server in the `server/` directory
 3. Configure the plugin with absolute paths
 
 Then start Claude Code with the plugin:
 
 ```bash
-claude --plugin-dir /path/to/tuivio/tuivio-plugin
+claude --plugin-dir /path/to/tuivio/plugin
 ```
 
 **Tip:** Add an alias to your shell profile for convenience:
 
 ```bash
 # Add to ~/.bashrc or ~/.zshrc
-alias claude-tui='claude --plugin-dir /path/to/tuivio/tuivio-plugin'
+alias claude-tui='claude --plugin-dir /path/to/tuivio/plugin'
 ```
 
 ## Manual Installation
@@ -40,23 +40,23 @@ alias claude-tui='claude --plugin-dir /path/to/tuivio/tuivio-plugin'
 ### 1. Build the MCP Server
 
 ```bash
-cd /path/to/tuivio
+cd /path/to/tuivio/server
 npm install
 npm run build
 ```
 
-This compiles the TypeScript source to `dist/`.
+This compiles the TypeScript source to `server/dist/`.
 
 ### 2. Configure the MCP Server Path
 
-Edit `tuivio-plugin/.mcp.json` to use the absolute path:
+Edit `plugin/.mcp.json` to use the absolute path:
 
 ```json
 {
   "mcpServers": {
     "tui": {
       "command": "node",
-      "args": ["/path/to/tuivio/dist/index.js"]
+      "args": ["/path/to/tuivio/server/dist/index.js"]
     }
   }
 }
@@ -65,7 +65,7 @@ Edit `tuivio-plugin/.mcp.json` to use the absolute path:
 ### 3. Start Claude Code with the Plugin
 
 ```bash
-claude --plugin-dir /path/to/tuivio/tuivio-plugin
+claude --plugin-dir /path/to/tuivio/plugin
 ```
 
 You can load the plugin in any project directory - just run the above command from wherever you're working.
@@ -80,29 +80,33 @@ Once installed, you can verify the plugin is working:
    ```
    You should see tools like `mcp__tui__run_tui`, `mcp__tui__view_screen`, etc.
 
-2. **Test with a simple TUI:**
-   ```
-   /tui-run node /path/to/tuivio/dist/sample-tui/index.js
-   ```
-
-3. **Check the agent is available:**
+2. **Check the agent is available:**
    ```
    Ask Claude to use the tuivio-dev agent
    ```
 
-## Plugin Structure
+## Project Structure
 
 ```
-tuivio-plugin/
-├── .claude-plugin/
-│   └── plugin.json      # Plugin manifest
-├── .mcp.json            # MCP server configuration
-├── agents/
-│   └── tuivio-dev.md     # TUI development agent
-└── skills/
-    ├── tui-run/         # Launch TUI skill
-    ├── tui-inspect/     # Inspect screen skill
-    └── tui-iterate/     # Fix and verify skill
+tuivio/
+├── server/                  # MCP Server (standalone)
+│   ├── src/                 # TypeScript source
+│   ├── dist/                # Compiled JavaScript
+│   ├── bin/                 # CLI entry point
+│   └── package.json         # Server dependencies
+├── plugin/                  # Claude Code Plugin
+│   ├── .claude-plugin/
+│   │   └── plugin.json      # Plugin manifest
+│   ├── .mcp.json            # MCP server configuration
+│   ├── agents/
+│   │   └── tuivio-dev.md    # TUI development agent
+│   └── skills/
+│       ├── tui-run/         # Launch TUI skill
+│       ├── tui-inspect/     # Inspect screen skill
+│       └── tui-iterate/     # Fix and verify skill
+├── docs/                    # Documentation
+├── install-plugin.sh        # Installation script
+└── package.json             # Root orchestration
 ```
 
 ## Available Features
@@ -140,15 +144,15 @@ A specialized agent for TUI development with visual feedback. Use it when develo
 
 1. Make sure you're using `--plugin-dir` flag when starting Claude Code
 2. Verify the plugin path is absolute and correct
-3. Check that `tuivio-plugin/.claude-plugin/plugin.json` exists
+3. Check that `plugin/.claude-plugin/plugin.json` exists
 
 ### MCP server fails to start
 
-1. Ensure the project is built: `npm run build`
-2. Check that `tuivio-plugin/.mcp.json` contains the correct absolute path
+1. Ensure the server is built: `cd server && npm run build`
+2. Check that `plugin/.mcp.json` contains the correct absolute path
 3. Check node-pty permissions (macOS):
    ```bash
-   chmod +x node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper
+   chmod +x server/node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper
    ```
 
 ### Screen capture shows garbage

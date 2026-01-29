@@ -9,8 +9,9 @@ set -e
 #   2. Direct npm install: npm install -g git+ssh://git@github.com:olesho/tuivio.git
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PLUGIN_DIR="$SCRIPT_DIR/tuivio-plugin"
-DIST_DIR="$SCRIPT_DIR/dist"
+PLUGIN_DIR="$SCRIPT_DIR/plugin"
+SERVER_DIR="$SCRIPT_DIR/server"
+DIST_DIR="$SERVER_DIR/dist"
 
 # Colors for output
 RED='\033[0;31m'
@@ -102,7 +103,7 @@ check_prerequisites() {
 build_server() {
     print_step "Building MCP server..."
 
-    cd "$SCRIPT_DIR"
+    cd "$SERVER_DIR"
 
     # Check if node_modules exists
     if [ ! -d "node_modules" ]; then
@@ -126,7 +127,7 @@ build_server() {
     fi
 
     # Fix node-pty permissions on macOS
-    SPAWN_HELPER="$SCRIPT_DIR/node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper"
+    SPAWN_HELPER="$SERVER_DIR/node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper"
     if [ -f "$SPAWN_HELPER" ] && [ ! -x "$SPAWN_HELPER" ]; then
         print_step "Fixing node-pty permissions..."
         chmod +x "$SPAWN_HELPER"
@@ -139,7 +140,7 @@ build_server() {
 install_global() {
     print_step "Installing tuivio-server globally..."
 
-    cd "$SCRIPT_DIR"
+    cd "$SERVER_DIR"
 
     # Link the package globally
     npm link

@@ -22,7 +22,7 @@ cd tuivio
 ./install-plugin.sh
 
 # Start Claude Code with the plugin
-claude --plugin-dir ./tuivio-plugin
+claude --plugin-dir ./plugin
 ```
 
 ### Method 2: Direct npm Install
@@ -33,7 +33,7 @@ npm install -g git+ssh://git@github.com:olesho/tuivio.git
 
 # Clone just to get the plugin directory
 git clone git@github.com:olesho/tuivio.git
-claude --plugin-dir ./tuivio/tuivio-plugin
+claude --plugin-dir ./tuivio/plugin
 ```
 
 ### Development Mode
@@ -127,11 +127,11 @@ The `tuivio-dev` agent is specialized for TUI development. It has access to:
 ## Directory Structure
 
 ```
-tuivio-plugin/
+plugin/
 ├── .claude-plugin/
 │   └── plugin.json           # Plugin manifest
 ├── agents/
-│   └── tuivio-dev.md          # Tuivio Development Agent
+│   └── tuivio-dev.md         # Tuivio Development Agent
 ├── skills/
 │   ├── tui-run/SKILL.md      # Launch TUI
 │   ├── tui-inspect/SKILL.md  # View screen

@@ -1,0 +1,42 @@
+{
+  "name": "tuivio",
+  "version": "1.0.0",
+  "description": "MCP server for controlling Terminal UI applications",
+  "main": "dist/index.js",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/olesho/tuivio.git"
+  },
+  "bin": {
+    "tuivio-server": "./bin/tuivio-server.js"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "start": "node dist/index.js",
+    "dev": "npm run dev:watch & npm run dev:server",
+    "dev:watch": "tsc --watch",
+    "dev:server": "nodemon"
+  },
+  "keywords": [
+    "mcp",
+    "tui",
+    "terminal",
+    "model-context-protocol"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "node-pty": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "nodemon": "^3.1.11",
+    "typescript": "^5.7.0"
+  }
+}
