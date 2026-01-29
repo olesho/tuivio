@@ -1,5 +1,7 @@
 {
   "name": "tuivio-tui-dev",
   "version": "1.0.0",
-  "description": "TUI development plugin with visual feedback loop"
+  "description": "TUI development plugin with visual feedback loop",
+  "hooks": "../hooks/hooks.json",
+  "mcpServers": "../.mcp.json"
 }

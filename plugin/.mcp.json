@@ -1,8 +1,9 @@
 {
   "mcpServers": {
     "tui": {
-      "command": "tuivio-server",
+      "command": "npx",
       "args": [
+        "-y", "tuivio",
         "--live-file", "./tuivio-live.txt",
         "--log-file", "./tuivio.log"
       ]
