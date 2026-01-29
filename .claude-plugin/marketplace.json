@@ -1,0 +1,22 @@
+{
+  "name": "tuivio-marketplace",
+  "owner": {
+    "name": "olesho"
+  },
+  "metadata": {
+    "description": "Tuivio - TUI development plugin with visual feedback loop",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "tuivio-tui-dev",
+      "source": "./plugin",
+      "description": "TUI development plugin with visual feedback loop for Claude Code",
+      "version": "1.0.0",
+      "author": {
+        "name": "olesho"
+      },
+      "repository": "https://github.com/olesho/tuivio"
+    }
+  ]
+}
