@@ -9,7 +9,7 @@
     "url": "git+ssh://git@github.com/olesho/tuivio.git"
   },
   "bin": {
-    "tuivio-server": "./bin/tuivio-server.js"
+    "tuivio-server": "bin/tuivio-server.js"
   },
   "files": [
     "dist",
