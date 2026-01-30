@@ -8,19 +8,23 @@ This guide explains how to install and configure the Tuivio TUI Development plug
 - Node.js v18 or higher
 - npm
 
-## Quick Install (Recommended)
+## Installation Methods
 
-Use the installation script to build and configure the plugin:
+### Method A: Clone and Install (Recommended)
 
 ```bash
-cd /path/to/tuivio
-./install-plugin.sh
+# HTTPS (no SSH key required)
+git clone https://github.com/olesho/tuivio.git
+cd tuivio
+./install-plugin.sh --global
 ```
 
-The script will:
-1. Check prerequisites (Node.js v18+, npm)
-2. Build the MCP server in the `server/` directory
-3. Configure the plugin with absolute paths
+For SSH users:
+```bash
+git clone git@github.com:olesho/tuivio.git
+cd tuivio
+./install-plugin.sh --global
+```
 
 Then start Claude Code with the plugin:
 
@@ -35,7 +39,64 @@ claude --plugin-dir /path/to/tuivio/plugin
 alias claude-tui='claude --plugin-dir /path/to/tuivio/plugin'
 ```
 
+### Method B: Direct npm from Git
+
+Install the MCP server globally without cloning:
+
+```bash
+npm install -g git+https://github.com/olesho/tuivio.git
+```
+
+Then configure your Claude Code MCP settings to use `tuivio-server`.
+
+### Method C: Marketplace Installation
+
+See [Marketplace Installation](marketplace.md) for using the plugin marketplace.
+
+### Method D: Local Development
+
+For development or testing changes:
+
+```bash
+git clone https://github.com/olesho/tuivio.git
+cd tuivio
+./install-plugin.sh --local
+```
+
+This configures the plugin with absolute paths to the local build instead of installing globally.
+
+## Installation Script Options
+
+The `install-plugin.sh` script supports these options:
+
+| Option | Description |
+|--------|-------------|
+| `--global` | Install `tuivio-server` as a global npm command (recommended) |
+| `--local` | Use absolute paths to local build (for development) |
+| `--help` | Show help message |
+
+If no option is specified, the script defaults to `--local`.
+
+## Uninstalling
+
+### Remove the Global Server
+
+```bash
+npm uninstall -g tuivio
+```
+
+### Remove the Plugin from Claude Code
+
+If you installed via marketplace:
+```
+/plugin uninstall tuivio-tui-dev
+```
+
+For manual installations, simply delete the tuivio directory and remove any shell aliases.
+
 ## Manual Installation
+
+If you prefer manual setup:
 
 ### 1. Build the MCP Server
 

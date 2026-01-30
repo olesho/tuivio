@@ -13,16 +13,20 @@ Tuivio provides two components:
 ## Quick Start
 
 ```bash
-# Clone the repository
-git clone git@github.com:olesho/tuivio.git
+# Clone (HTTPS - no SSH key needed)
+git clone https://github.com/olesho/tuivio.git
 cd tuivio
 
-# Install and configure
-./install-plugin.sh
+# Install globally
+./install-plugin.sh --global
 
 # Start Claude Code with the plugin
 claude --plugin-dir ./plugin
 ```
+
+For SSH users: `git clone git@github.com:olesho/tuivio.git`
+
+For other installation methods (npm from git, marketplace), see [Installation Guide](docs/installation.md).
 
 ## Project Structure
 
