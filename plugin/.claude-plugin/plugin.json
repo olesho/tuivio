@@ -2,6 +2,22 @@
   "name": "tuivio-tui-dev",
   "version": "1.0.0",
   "description": "TUI development plugin with visual feedback loop",
-  "hooks": "../hooks/hooks.json",
-  "mcpServers": "../.mcp.json"
+  "hooks": [
+    {
+      "matcher": ".*",
+      "event": "SessionStart",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "command -v tuivio-server >/dev/null || echo '[Tuivio] Server not found. Run: npm install -g tuivio'"
+        }
+      ]
+    }
+  ],
+  "mcpServers": {
+    "tui": {
+      "command": "npx",
+      "args": ["-y", "tuivio", "--live-file", "./tuivio-live.txt"]
+    }
+  }
 }
