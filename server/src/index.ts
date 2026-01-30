@@ -25,7 +25,7 @@ let rows = 24;
 let cwd: string | undefined;
 let liveDisplay = false;
 let liveFilePath: string | undefined;
-let logFilePath: string = './tuivio.log';
+let logFilePath: string = `/tmp/tuivio-${process.pid}.log`;
 
 for (let i = 0; i < args.length; i++) {
   const arg = args[i];
@@ -46,6 +46,24 @@ for (let i = 0; i < args.length; i++) {
   } else {
     commandArgs.push(arg);
   }
+}
+
+// Helper to inject PID into filename
+function injectPidIntoPath(filePath: string): string {
+  const lastDot = filePath.lastIndexOf('.');
+  const lastSlash = filePath.lastIndexOf('/');
+  if (lastDot > 0 && lastDot > lastSlash) {
+    // Has extension: insert PID before extension
+    return `${filePath.slice(0, lastDot)}-${process.pid}${filePath.slice(lastDot)}`;
+  } else {
+    // No extension: append PID
+    return `${filePath}-${process.pid}`;
+  }
+}
+
+// Apply PID to live file path if specified
+if (liveFilePath) {
+  liveFilePath = injectPidIntoPath(liveFilePath);
 }
 
 // Live display: renders the TUI screen to stderr for human observation

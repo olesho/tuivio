@@ -1,6 +1,6 @@
 {
   "name": "tuivio",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP server for controlling Terminal UI applications",
   "main": "dist/index.js",
   "type": "module",
@@ -9,6 +9,7 @@
     "url": "git+ssh://git@github.com/olesho/tuivio.git"
   },
   "bin": {
+    "tuivio": "bin/tuivio-server.js",
     "tuivio-server": "bin/tuivio-server.js"
   },
   "files": [
