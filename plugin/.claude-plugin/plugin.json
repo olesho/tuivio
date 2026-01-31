@@ -1,6 +1,6 @@
 {
   "name": "tuivio-tui-dev",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "TUI development plugin with visual feedback loop",
   "hooks": {
     "SessionStart": [
