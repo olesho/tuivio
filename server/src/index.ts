@@ -64,6 +64,12 @@ function injectPidIntoPath(filePath: string): string {
 // Apply PID to live file path if specified
 if (liveFilePath) {
   liveFilePath = injectPidIntoPath(liveFilePath);
+
+  // Ensure live file directory exists
+  const dir = liveFilePath.substring(0, liveFilePath.lastIndexOf('/'));
+  if (dir) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
 }
 
 // Live display: renders the TUI screen to stderr for human observation
@@ -275,6 +281,18 @@ function cleanupLiveDisplay(): void {
 
   // Reset terminal state
   process.stderr.write(term.showCursor() + term.reset() + '\n');
+}
+
+/**
+ * Clean up live file on exit
+ */
+function cleanupLiveFile(): void {
+  if (!liveFilePath) return;
+  try {
+    fs.unlinkSync(liveFilePath);
+  } catch {
+    // Silently ignore - file may not exist
+  }
 }
 
 // Command is now optional - can be started later via run_tui tool
@@ -1042,6 +1060,7 @@ async function main() {
   // Handle cleanup
   process.on('SIGINT', () => {
     cleanupLiveDisplay();
+    cleanupLiveFile();
     terminalRegistry.killAll();
     if (legacyPtyManager) {
       legacyPtyManager.stop();
@@ -1051,11 +1070,17 @@ async function main() {
 
   process.on('SIGTERM', () => {
     cleanupLiveDisplay();
+    cleanupLiveFile();
     terminalRegistry.killAll();
     if (legacyPtyManager) {
       legacyPtyManager.stop();
     }
     process.exit(0);
+  });
+
+  // Handle graceful MCP shutdown (when client disconnects)
+  process.on('beforeExit', () => {
+    cleanupLiveFile();
   });
 }
 

@@ -10,23 +10,54 @@ Tuivio provides two components:
 
 2. **Claude Code Plugin** (`plugin/`) - A plugin for Claude Code that provides agents and skills for TUI development workflows.
 
-## Quick Start
+## Development Lifecycle
 
-```bash
-# Clone (HTTPS - no SSH key needed)
-git clone https://github.com/olesho/tuivio.git
-cd tuivio
+```
+════════════════════════════════════════════════════════════════════════
+              TUIVIO SERVER is started by Coding Agent
+════════════════════════════════════════════════════════════════════════
 
-# Install globally
-./install-plugin.sh --global
-
-# Start Claude Code with the plugin
-claude --plugin-dir ./plugin
+┌────────────────┐
+│  WRITE/BUILD   │◄─────────────────────────────────────┐
+│     Code       │                                      │
+└───────┬────────┘                                      │
+        │                                               │
+        ▼                                               │
+ ╔═════════════════════════════════════════════╗        │
+ ║         INTERACTION (TUI running)           ║        │
+ ║                                             ║        │
+ ║    ┌──────────────┐      ┌───────────┐      ║        │
+ ║    │ VIEW SCREEN  │◄────►│ INTERACT  │      ║        │
+ ║    │              │      │ (keys/txt)│      ║        │
+ ║    └──────────────┘      └───────────┘      ║        │
+ ║                                             ║        │
+ ╚══════════════════════╤══════════════════════╝        │
+                        │                               │
+                        ▼                               │
+                 ┌─────────────┐                        │
+                 │   ANALYZE   │────────────────────────┘
+                 └─────────────┘
 ```
 
-For SSH users: `git clone git@github.com:olesho/tuivio.git`
+The coding agent (Claude Code) runs the TUI application via Tuivio's MCP server, then repeatedly views the screen and interacts with it. After interaction, the agent analyzes the results and loops back to write/build code as needed.
 
-For other installation methods (npm from git, marketplace), see [Installation Guide](docs/installation.md).
+## Quick Start (Claude Code)
+
+**Add the Tuivio marketplace source:**
+
+```bash
+/plugin marketplace add olesho/tuivio
+```
+
+This adds the marketplace configuration from https://github.com/olesho/tuivio.
+
+**Install the plugin:**
+
+```bash
+/plugin install tuivio-tui-dev@tuivio-marketplace --scope user
+```
+
+For manual installation or standalone server usage, see [Installation Guide](docs/installation.md).
 
 ## Project Structure
 

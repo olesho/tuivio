@@ -18,7 +18,7 @@
   "mcpServers": {
     "tui": {
       "command": "npx",
-      "args": ["-y", "tuivio", "--live-file", "./tuivio-live.txt"]
+      "args": ["-y", "tuivio", "--live-file", "./.tuivio.tmp/tuivio-live.txt"]
     }
   }
 }
