@@ -3,8 +3,12 @@
     "SessionStart": [
       {
         "matcher": ".*",
-        "type": "command",
-        "command": "command -v tuivio-server >/dev/null || echo '[Tuivio] Server not found. Run: npm install -g tuivio'"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v tuivio-server >/dev/null || echo '[Tuivio] Server not found. Run: npm install -g tuivio'"
+          }
+        ]
       }
     ]
   }
