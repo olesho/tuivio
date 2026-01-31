@@ -1,6 +1,6 @@
 {
   "name": "tuivio",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "MCP server for controlling Terminal UI applications",
   "main": "dist/index.js",
   "type": "module",
