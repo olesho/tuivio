@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Tuivio - TUI development plugin with visual feedback loop",
-    "version": "1.0.3"
+    "version": "1.0.4"
   },
   "plugins": [
     {
       "name": "tuivio-tui-dev",
       "source": "./plugin",
       "description": "TUI development plugin with visual feedback loop for Claude Code",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "author": {
         "name": "olesho"
       },

@@ -18,13 +18,13 @@ const screen = blessed.screen({
 });
 
 // Header
-blessed.box({
+const header = blessed.box({
   parent: screen,
   top: 0,
   left: 0,
   width: '100%',
   height: 3,
-  content: '{center}Crash Test TUI{/center}',
+  content: '{center}Crash Test TUI - Tuivio Testing{/center}',
   tags: true,
   style: {
     fg: 'white',
@@ -33,18 +33,18 @@ blessed.box({
   },
 });
 
-// Menu items for crash scenarios
+// Menu items for different crash scenarios
 const menuItems = [
   '1. Normal action (update status)',
   '2. Throw uncaught exception',
   '3. Exit with code 1 (error)',
-  '4. Exit with code 139 (segfault)',
+  '4. Exit with code 139 (simulates segfault)',
   '5. Exit normally (code 0)',
 ];
 
 const menu = blessed.list({
   parent: screen,
-  label: ' Crash Test Menu ',
+  label: ' Crash Test Menu (arrows + Enter) ',
   top: 4,
   left: 'center',
   width: '60%',
@@ -78,7 +78,7 @@ const statusBox = blessed.box({
   left: 'center',
   width: '60%',
   height: 5,
-  content: 'Select an option to test crash scenarios.\nUse arrow keys to navigate, Enter to select.',
+  content: 'Select an option to test crash handling.\nUse arrows to navigate, Enter to select.',
   border: {
     type: 'line',
   },
@@ -90,13 +90,13 @@ const statusBox = blessed.box({
 });
 
 // Footer
-blessed.box({
+const footer = blessed.box({
   parent: screen,
   bottom: 0,
   left: 0,
   width: '100%',
   height: 3,
-  content: '{center}Use arrows to navigate | Enter to select | q to quit{/center}',
+  content: '{center}q/Esc: Quit | Ctrl+C: Force Exit{/center}',
   tags: true,
   style: {
     fg: 'black',
@@ -104,47 +104,42 @@ blessed.box({
   },
 });
 
-// Action counter
+// Track action count for normal actions
 let actionCount = 0;
 
 // Menu selection handler
-menu.on('select', (_item, index) => {
+menu.on('select', (item, index) => {
   switch (index) {
     case 0: // Normal action
       actionCount++;
-      statusBox.setContent(`Action performed ${actionCount} times.\nEverything is working normally.`);
+      statusBox.setContent(`Normal action #${actionCount} executed.\nEverything is working fine!`);
       screen.render();
       break;
 
-    case 1: // Throw uncaught exception
+    case 1: // Throw exception
       statusBox.setContent('Throwing uncaught exception in 1 second...');
       screen.render();
       setTimeout(() => {
-        // Write to stderr before crashing (this should appear in the output)
-        console.error('ERROR: Deliberate crash triggered!');
-        console.error('Stack trace will follow...');
-        throw new Error('Deliberate uncaught exception for testing!');
+        throw new Error('Deliberate crash! This is a test exception.');
       }, 1000);
       break;
 
     case 2: // Exit with code 1
-      statusBox.setContent('Exiting with code 1 in 1 second...');
+      statusBox.setContent('Exiting with error code 1...');
       screen.render();
       setTimeout(() => {
-        console.error('Exiting with error code 1');
-        screen.destroy();
+        console.error('Error: Deliberate exit with code 1');
         process.exit(1);
-      }, 1000);
+      }, 500);
       break;
 
-    case 3: // Exit with code 139 (simulates segfault)
-      statusBox.setContent('Exiting with code 139 (simulating segfault) in 1 second...');
+    case 3: // Exit with code 139 (segfault simulation)
+      statusBox.setContent('Simulating segfault (exit code 139)...');
       screen.render();
       setTimeout(() => {
-        console.error('Simulating segmentation fault (exit code 139)');
-        screen.destroy();
+        console.error('Segmentation fault (simulated)');
         process.exit(139);
-      }, 1000);
+      }, 500);
       break;
 
     case 4: // Normal exit

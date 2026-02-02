@@ -1,7 +1,7 @@
 {
   "name": "sample-crashing-app",
   "version": "1.0.0",
-  "description": "Sample TUI application that demonstrates various crash scenarios for testing Tuivio error capture",
+  "description": "Sample TUI application that can deliberately crash for testing Tuivio crash logging",
   "type": "module",
   "main": "index.js",
   "scripts": {
