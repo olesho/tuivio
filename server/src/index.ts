@@ -12,7 +12,7 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { PtyManager } from './pty-manager.js';
+import { PtyManager, ExitInfo } from './pty-manager.js';
 import { TerminalRegistry } from './terminal-registry.js';
 import * as fs from 'fs';
 
@@ -215,7 +215,7 @@ function writeLiveFile(ptyManager: PtyManager): void {
 /**
  * Log MCP tool calls and results to file
  */
-function logToFile(type: 'TOOL_CALL' | 'TOOL_RESULT', toolName: string, data: string): void {
+function logToFile(type: 'TOOL_CALL' | 'TOOL_RESULT' | 'PROCESS_EXIT', toolName: string, data: string): void {
   try {
     const timestamp = new Date().toISOString();
     const entry = `[${timestamp}] [${type}] ${toolName}: ${data}\n`;
@@ -223,6 +223,35 @@ function logToFile(type: 'TOOL_CALL' | 'TOOL_RESULT', toolName: string, data: st
   } catch (err) {
     // Silently ignore write errors to avoid blocking MCP operations
   }
+}
+
+/**
+ * Build an error message with crash context for a non-running PTY
+ */
+function buildCrashContextError(manager: PtyManager, baseMessage: string): string {
+  const exitInfo = manager.getLastExitInfo();
+  const lastOutput = manager.getLastOutput(20);
+  const lastScreen = manager.getScreenText();
+
+  let errorMsg = baseMessage;
+
+  if (exitInfo) {
+    errorMsg += `\n\nProcess exit info:`;
+    errorMsg += `\n  Exit code: ${exitInfo.exitCode}`;
+    if (exitInfo.signal !== undefined) {
+      errorMsg += `\n  Signal: ${exitInfo.signal}`;
+    }
+  }
+
+  if (lastOutput && lastOutput.trim()) {
+    errorMsg += `\n\nLast output (up to 20 lines):\n${lastOutput}`;
+  }
+
+  if (lastScreen && lastScreen.trim()) {
+    errorMsg += `\n\nLast screen state:\n${lastScreen}`;
+  }
+
+  return errorMsg;
 }
 
 /**
@@ -610,6 +639,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const manager = getManagerForTerminal(terminal_id);
         const screen = manager.getScreen();
 
+        // Check if the process has crashed and include crash info
+        const exitInfo = manager.getLastExitInfo();
+        const processStatus = !manager.running && exitInfo
+          ? { running: false, exitCode: exitInfo.exitCode, signal: exitInfo.signal }
+          : { running: manager.running };
+
         if (includeMetadata) {
           result = {
             content: [
@@ -618,6 +653,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 text: JSON.stringify(
                   {
                     terminal_id: resolveTerminalId(terminal_id),
+                    process: processStatus,
                     screen: screen.lines.map((l) => l.trimEnd()).join('\n'),
                     cursor: { row: screen.cursorRow, col: screen.cursorCol },
                     size: { cols: screen.cols, rows: screen.rows },
@@ -629,11 +665,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             ],
           };
         } else {
+          let screenText = manager.getScreenText();
+          // Add a note if the process has crashed
+          if (!manager.running && exitInfo && exitInfo.exitCode !== 0) {
+            screenText += `\n\n[Process exited with code ${exitInfo.exitCode}${exitInfo.signal !== undefined ? `, signal ${exitInfo.signal}` : ''}]`;
+          }
           result = {
             content: [
               {
                 type: 'text',
-                text: manager.getScreenText(),
+                text: screenText,
               },
             ],
           };
@@ -647,7 +688,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           throw new Error('text parameter is required');
         }
         const manager = getManagerForTerminal(terminal_id);
-        manager.typeText(text);
+        try {
+          manager.typeText(text);
+        } catch (error) {
+          if (error instanceof Error && error.message === 'PTY is not running') {
+            throw new Error(buildCrashContextError(manager, 'PTY is not running'));
+          }
+          throw error;
+        }
         // Give the TUI a moment to process
         await manager.wait(50);
         result = {
@@ -667,7 +715,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           throw new Error('key parameter is required');
         }
         const manager = getManagerForTerminal(terminal_id);
-        manager.pressKey(key);
+        try {
+          manager.pressKey(key);
+        } catch (error) {
+          if (error instanceof Error && error.message === 'PTY is not running') {
+            throw new Error(buildCrashContextError(manager, 'PTY is not running'));
+          }
+          throw error;
+        }
         // Give the TUI a moment to process
         await manager.wait(50);
         result = {
@@ -701,6 +756,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const manager = getManagerForTerminal(terminal_id);
         const waitMs = ms ?? 100;
         await manager.wait(waitMs);
+
+        // Check if the process exited while we were waiting and provide context
+        if (!manager.running) {
+          const exitInfo = manager.getLastExitInfo();
+          if (exitInfo && exitInfo.exitCode !== 0) {
+            result = {
+              content: [
+                {
+                  type: 'text',
+                  text: `Waited ${waitMs}ms. Note: Process has exited with code ${exitInfo.exitCode}${exitInfo.signal !== undefined ? `, signal ${exitInfo.signal}` : ''}`,
+                },
+              ],
+            };
+            break;
+          }
+        }
+
         result = {
           content: [
             {
@@ -990,9 +1062,13 @@ function setupLiveDisplayListeners(): void {
     }, RENDER_DEBOUNCE_MS);
   });
 
-  terminalRegistry.on('exit', ({ terminalId }: { terminalId: string }) => {
+  terminalRegistry.on('exit', ({ terminalId, exitCode, signal }: { terminalId: string; exitCode: number; signal?: number }) => {
     lastToolCall = `TUI process exited (terminal ${terminalId})`;
     lastToolTime = Date.now();
+
+    // Log the exit event with details
+    logToFile('PROCESS_EXIT', `terminal_${terminalId}`, JSON.stringify({ exitCode, signal }));
+
     const manager = getFocusedManager();
     if (manager) {
       broadcastLiveDisplay(manager);
@@ -1013,7 +1089,10 @@ function setupLiveDisplayListeners(): void {
       }
     });
 
-    legacyPtyManager.on('exit', () => {
+    legacyPtyManager.on('exit', ({ exitCode, signal }: { exitCode: number; signal?: number }) => {
+      // Log the exit event with details
+      logToFile('PROCESS_EXIT', 'terminal_legacy', JSON.stringify({ exitCode, signal }));
+
       if (!focusedTerminalId && !terminalRegistry.hasTerminals()) {
         lastToolCall = 'TUI process exited';
         lastToolTime = Date.now();

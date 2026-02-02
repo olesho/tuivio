@@ -109,6 +109,11 @@ const CTRL_KEYS: Record<string, string> = {
   'ctrl+z': '\x1a',
 };
 
+export interface ExitInfo {
+  exitCode: number;
+  signal?: number;
+}
+
 export class PtyManager extends EventEmitter {
   private ptyProcess: pty.IPty | null = null;
   private screenBuffer: string[] = [];
@@ -118,6 +123,7 @@ export class PtyManager extends EventEmitter {
   private cursorRow: number = 0;
   private cursorCol: number = 0;
   private isRunning: boolean = false;
+  private lastExitInfo: ExitInfo | null = null;
 
   constructor(private options: PtyOptions) {
     super();
@@ -163,6 +169,8 @@ export class PtyManager extends EventEmitter {
     });
 
     this.isRunning = true;
+    this.lastExitInfo = null;
+    this.rawBuffer = '';
     this.initializeBuffer();
 
     this.ptyProcess.onData((data) => {
@@ -173,6 +181,7 @@ export class PtyManager extends EventEmitter {
 
     this.ptyProcess.onExit(({ exitCode, signal }) => {
       this.isRunning = false;
+      this.lastExitInfo = { exitCode, signal };
       this.emit('exit', { exitCode, signal });
     });
 
@@ -437,6 +446,25 @@ export class PtyManager extends EventEmitter {
    */
   getScreenText(): string {
     return this.screenBuffer.map((line) => line.trimEnd()).join('\n');
+  }
+
+  /**
+   * Get information about the last process exit (exit code and signal)
+   */
+  getLastExitInfo(): ExitInfo | null {
+    return this.lastExitInfo;
+  }
+
+  /**
+   * Get the last N lines from the raw output buffer
+   * Useful for debugging when a TUI crashes
+   */
+  getLastOutput(lines: number = 20): string {
+    // Split the raw buffer into lines
+    const allLines = this.rawBuffer.split('\n');
+    // Get the last N lines
+    const lastLines = allLines.slice(-lines);
+    return lastLines.join('\n');
   }
 
   /**

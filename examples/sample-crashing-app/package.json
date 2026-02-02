@@ -1,0 +1,17 @@
+{
+  "name": "sample-crashing-app",
+  "version": "1.0.0",
+  "description": "Sample TUI application that demonstrates various crash scenarios for testing Tuivio error capture",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "npx tsx index.ts"
+  },
+  "dependencies": {
+    "blessed": "^0.1.81"
+  },
+  "devDependencies": {
+    "@types/blessed": "^0.1.25",
+    "tsx": "^4.0.0"
+  }
+}
