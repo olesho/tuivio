@@ -6,3 +6,7 @@ dist/
 .claude/
 .beads/
 *.swp
+tuivio-recording-*.jsonl
+tuivio-live-*.txt
+.tuivio.tmp/
+package-lock.json
