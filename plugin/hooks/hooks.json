@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "command -v tuivio-server >/dev/null || echo '[Tuivio] Server not found. Run: npm install -g tuivio'"
+            "command": "command -v tmux >/dev/null || echo '[Tuivio] tmux not found. Install it: brew install tmux (macOS) or apt install tmux (Linux)'"
           }
         ]
       }

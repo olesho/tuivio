@@ -2,16 +2,13 @@
 set -e
 
 # Tuivio Plugin Installation Script
-# Installs the MCP server and prepares the plugin for use with Claude Code
+# Verifies tmux is installed and prints the command to use the plugin with Claude Code
 #
-# Installation methods:
-#   1. Clone and install:  git clone git@github.com:olesho/tuivio.git && cd tuivio && ./install-plugin.sh
-#   2. Direct npm install: npm install -g git+ssh://git@github.com:olesho/tuivio.git
+# Installation:
+#   git clone git@github.com:olesho/tuivio.git && cd tuivio && ./install-plugin.sh
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_DIR="$SCRIPT_DIR/plugin"
-SERVER_DIR="$SCRIPT_DIR/server"
-DIST_DIR="$SERVER_DIR/dist"
 
 # Colors for output
 RED='\033[0;31m'
@@ -36,30 +33,20 @@ print_success() {
     echo -e "${GREEN}✓${NC} $1"
 }
 
-print_info() {
-    echo -e "${BLUE}${NC} $1"
-}
-
 # Show usage
 usage() {
     echo "Usage: $0 [options]"
     echo ""
-    echo "Installs the Tuivio MCP server and configures the plugin for Claude Code."
+    echo "Verifies tmux is installed and configures the plugin for Claude Code."
     echo ""
     echo "Options:"
-    echo "  --global    Install globally via npm link (recommended)"
-    echo "  --local     Use local paths (for development)"
     echo "  --help      Show this help message"
     echo ""
-    echo "Installation from git repository:"
+    echo "Installation:"
     echo ""
-    echo "  # Method 1: Clone and install (recommended)"
     echo "  git clone git@github.com:olesho/tuivio.git"
     echo "  cd tuivio"
-    echo "  ./install-plugin.sh --global"
-    echo ""
-    echo "  # Method 2: Direct npm install"
-    echo "  npm install -g git+ssh://git@github.com:olesho/tuivio.git"
+    echo "  ./install-plugin.sh"
     echo ""
     echo "After installation, start Claude Code with:"
     echo "  claude --plugin-dir $PLUGIN_DIR"
@@ -71,25 +58,17 @@ usage() {
 check_prerequisites() {
     print_step "Checking prerequisites..."
 
-    # Check Node.js
-    if ! command -v node &> /dev/null; then
-        print_error "Node.js is not installed. Please install Node.js v18 or higher."
+    # Check tmux
+    if ! command -v tmux &> /dev/null; then
+        print_error "tmux is not installed."
+        echo ""
+        echo "Install tmux:"
+        echo "  macOS:  brew install tmux"
+        echo "  Ubuntu: sudo apt install tmux"
+        echo "  Fedora: sudo dnf install tmux"
         exit 1
     fi
-
-    NODE_VERSION=$(node -v | sed 's/v//' | cut -d. -f1)
-    if [ "$NODE_VERSION" -lt 18 ]; then
-        print_error "Node.js v18+ required. Found: $(node -v)"
-        exit 1
-    fi
-    print_success "Node.js $(node -v)"
-
-    # Check npm
-    if ! command -v npm &> /dev/null; then
-        print_error "npm is not installed."
-        exit 1
-    fi
-    print_success "npm $(npm -v)"
+    print_success "tmux $(tmux -V)"
 
     # Check Claude Code
     if ! command -v claude &> /dev/null; then
@@ -99,123 +78,16 @@ check_prerequisites() {
     fi
 }
 
-# Build the MCP server
-build_server() {
-    print_step "Building MCP server..."
-
-    cd "$SERVER_DIR"
-
-    # Check if node_modules exists
-    if [ ! -d "node_modules" ]; then
-        print_step "Installing dependencies..."
-        npm install
-    fi
-
-    # Build if needed
-    if [ ! -d "$DIST_DIR" ] || [ ! -f "$DIST_DIR/index.js" ]; then
-        print_step "Compiling TypeScript..."
-        npm run build
-    else
-        # Check if source is newer than dist
-        NEWEST_SRC=$(find src -name "*.ts" -newer "$DIST_DIR/index.js" 2>/dev/null | head -1)
-        if [ -n "$NEWEST_SRC" ]; then
-            print_step "Source changed, recompiling..."
-            npm run build
-        else
-            print_success "Build is up to date"
-        fi
-    fi
-
-    # Fix node-pty permissions on macOS
-    SPAWN_HELPER="$SERVER_DIR/node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper"
-    if [ -f "$SPAWN_HELPER" ] && [ ! -x "$SPAWN_HELPER" ]; then
-        print_step "Fixing node-pty permissions..."
-        chmod +x "$SPAWN_HELPER"
-    fi
-
-    print_success "MCP server ready at $DIST_DIR/index.js"
-}
-
-# Install globally via npm link
-install_global() {
-    print_step "Installing tuivio-server globally..."
-
-    cd "$SERVER_DIR"
-
-    # Link the package globally
-    npm link
-
-    # Verify the command is available
-    if command -v tuivio-server &> /dev/null; then
-        print_success "tuivio-server command is now available globally"
-    else
-        print_warning "tuivio-server not found in PATH. You may need to restart your shell."
-    fi
-}
-
-# Configure the plugin for local development (absolute paths)
-configure_plugin_local() {
-    print_step "Configuring plugin for local development..."
-
-    # Update .mcp.json with absolute path to built server
-    local MCP_CONFIG="$PLUGIN_DIR/.mcp.json"
-    cat > "$MCP_CONFIG" << EOF
-{
-  "mcpServers": {
-    "tui": {
-      "command": "node",
-      "args": [
-        "$DIST_DIR/index.js",
-        "--live-file", "./tuivio-live.txt",
-        "--log-file", "./tuivio.log"
-      ]
-    }
-  }
-}
-EOF
-    print_success "Configured MCP with local absolute path"
-}
-
-# Configure the plugin for global installation (uses tuivio-server command)
-configure_plugin_global() {
-    print_step "Configuring plugin for global installation..."
-
-    # Update .mcp.json to use the global command
-    local MCP_CONFIG="$PLUGIN_DIR/.mcp.json"
-    cat > "$MCP_CONFIG" << EOF
-{
-  "mcpServers": {
-    "tui": {
-      "command": "tuivio-server",
-      "args": [
-        "--live-file", "./tuivio-live.txt",
-        "--log-file", "./tuivio.log"
-      ]
-    }
-  }
-}
-EOF
-    print_success "Configured MCP to use global tuivio-server command"
-}
-
-# Verify the plugin is ready
+# Verify the plugin directory
 verify_plugin() {
     print_step "Verifying plugin..."
 
     local ALL_OK=true
 
-    # Check plugin files
     if [ -f "$PLUGIN_DIR/.claude-plugin/plugin.json" ]; then
         print_success "Plugin manifest exists"
     else
         print_error "Missing plugin.json"
-        ALL_OK=false
-    fi
-
-    if [ -f "$PLUGIN_DIR/.mcp.json" ]; then
-        print_success "MCP config exists"
-    else
-        print_error "Missing .mcp.json"
         ALL_OK=false
     fi
 
@@ -233,14 +105,6 @@ verify_plugin() {
         ALL_OK=false
     fi
 
-    # Check MCP server
-    if [ -f "$DIST_DIR/index.js" ]; then
-        print_success "MCP server built"
-    else
-        print_error "MCP server not built"
-        ALL_OK=false
-    fi
-
     if [ "$ALL_OK" = true ]; then
         return 0
     else
@@ -250,21 +114,11 @@ verify_plugin() {
 
 # Main
 main() {
-    local INSTALL_MODE="global"
-
     # Parse arguments
     while [[ $# -gt 0 ]]; do
         case $1 in
             --help|-h)
                 usage
-                ;;
-            --global)
-                INSTALL_MODE="global"
-                shift
-                ;;
-            --local)
-                INSTALL_MODE="local"
-                shift
                 ;;
             *)
                 print_error "Unknown option: $1"
@@ -276,18 +130,9 @@ main() {
     echo "Tuivio TUI Development Plugin Setup"
     echo "==================================="
     echo "Plugin: $PLUGIN_DIR"
-    echo "Mode: $INSTALL_MODE"
     echo ""
 
     check_prerequisites
-    build_server
-
-    if [ "$INSTALL_MODE" = "global" ]; then
-        install_global
-        configure_plugin_global
-    else
-        configure_plugin_local
-    fi
 
     if verify_plugin; then
         echo ""

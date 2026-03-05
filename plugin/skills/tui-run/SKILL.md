@@ -21,23 +21,21 @@ Launch the specified TUI application and return its initial screen state.
 /tui-run ./my-tui-app
 ```
 
-## Workflow
-
-1. **Stop any existing TUI** - Clean up previous session
-2. **Launch the application** - Using `mcp__tui__run_tui`
-3. **Wait for initialization** - 1000ms default
-4. **Capture and return screen** - Using `mcp__tui__view_screen`
-
 ## Instructions
 
 When the user invokes this skill:
 
 1. Parse the command from the arguments (first word is command, rest are args)
-2. If a TUI is already running, stop it first with `mcp__tui__stop_tui`
-3. Launch the new TUI with `mcp__tui__run_tui`
-4. Wait 1000ms with `mcp__tui__wait` for the app to initialize
-5. View the screen with `mcp__tui__view_screen`
-6. Report what you see:
+2. Kill any existing tuivio session, then launch the app, wait, and capture:
+
+```bash
+tmux kill-session -t tuivio 2>/dev/null
+tmux new-session -d -s tuivio -x 80 -y 24 '<command> <args>'
+sleep 1
+tmux capture-pane -t tuivio -p
+```
+
+3. Report what you see:
    - Is the app running correctly?
    - What's displayed on screen?
    - Are there any errors or crashes?

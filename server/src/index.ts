@@ -1161,6 +1161,18 @@ async function main() {
   process.on('beforeExit', () => {
     cleanupLiveFile();
   });
+
+  // Detect when the MCP client disconnects (stdin pipe closes)
+  // Without this, the server process stays alive as a zombie after Claude Code exits
+  process.stdin.on('end', () => {
+    cleanupLiveDisplay();
+    cleanupLiveFile();
+    terminalRegistry.killAll();
+    if (legacyPtyManager) {
+      legacyPtyManager.stop();
+    }
+    process.exit(0);
+  });
 }
 
 main().catch((error) => {
