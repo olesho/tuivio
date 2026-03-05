@@ -25,19 +25,22 @@ Launch the specified TUI application and return its initial screen state.
 
 When the user invokes this skill:
 
-1. Parse the command from the arguments (first word is command, rest are args)
-2. Kill any existing tuivio session, then launch the app, wait, and capture:
+1. If no command is provided, ask the user what TUI application they want to run.
+
+2. Run EXACTLY these two commands (do NOT use raw tmux — you MUST use tuivio-start):
 
 ```bash
-tmux kill-session -t tuivio 2>/dev/null
-tmux new-session -d -s tuivio -x 80 -y 24 '<command> <args>'
-sleep 1
+tuivio-start <command> <args>
+```
+
+```bash
 tmux capture-pane -t tuivio -p
 ```
+
+IMPORTANT: Always use `tuivio-start` to launch. Do NOT run `tmux new-session` directly.
+`tuivio-start` handles tmux session creation AND enables recording/live-attach support.
 
 3. Report what you see:
    - Is the app running correctly?
    - What's displayed on screen?
    - Are there any errors or crashes?
-
-If no command is provided, ask the user what TUI application they want to run.

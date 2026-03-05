@@ -10,7 +10,13 @@
   },
   "bin": {
     "tuivio": "bin/tuivio-server.js",
-    "tuivio-server": "bin/tuivio-server.js"
+    "tuivio-server": "bin/tuivio-server.js",
+    "tuivio-record": "dist/record.js",
+    "tuivio-mark": "dist/mark.js",
+    "tuivio-summarize": "dist/recording-summarizer.js",
+    "tuivio-discover": "dist/discover.js",
+    "tuivio-attach": "dist/attach.js",
+    "tuivio-start": "dist/start.js"
   },
   "files": [
     "dist",

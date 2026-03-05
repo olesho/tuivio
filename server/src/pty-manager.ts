@@ -4,6 +4,7 @@
 
 import * as pty from 'node-pty';
 import { EventEmitter } from 'events';
+import { AnsiParser } from './ansi-parser.js';
 
 export interface PtyOptions {
   /** Path to the application to run */
@@ -36,7 +37,7 @@ export interface ScreenBuffer {
 /**
  * Special key mappings to their escape sequences
  */
-const KEY_SEQUENCES: Record<string, string> = {
+export const KEY_SEQUENCES: Record<string, string> = {
   // Navigation
   enter: '\r',
   return: '\r',
@@ -80,7 +81,7 @@ const KEY_SEQUENCES: Record<string, string> = {
 /**
  * Control key mappings (Ctrl+key produces ASCII 1-26)
  */
-const CTRL_KEYS: Record<string, string> = {
+export const CTRL_KEYS: Record<string, string> = {
   'ctrl+a': '\x01',
   'ctrl+b': '\x02',
   'ctrl+c': '\x03',
@@ -116,12 +117,10 @@ export interface ExitInfo {
 
 export class PtyManager extends EventEmitter {
   private ptyProcess: pty.IPty | null = null;
-  private screenBuffer: string[] = [];
+  private ansiParser: AnsiParser;
   private rawBuffer: string = '';
   private cols: number;
   private rows: number;
-  private cursorRow: number = 0;
-  private cursorCol: number = 0;
   private isRunning: boolean = false;
   private lastExitInfo: ExitInfo | null = null;
 
@@ -129,16 +128,7 @@ export class PtyManager extends EventEmitter {
     super();
     this.cols = options.cols ?? 80;
     this.rows = options.rows ?? 24;
-    this.initializeBuffer();
-  }
-
-  /**
-   * Initialize the screen buffer with empty lines
-   */
-  private initializeBuffer(): void {
-    this.screenBuffer = Array(this.rows).fill(''.padEnd(this.cols, ' '));
-    this.cursorRow = 0;
-    this.cursorCol = 0;
+    this.ansiParser = new AnsiParser(this.cols, this.rows);
   }
 
   /**
@@ -171,11 +161,11 @@ export class PtyManager extends EventEmitter {
     this.isRunning = true;
     this.lastExitInfo = null;
     this.rawBuffer = '';
-    this.initializeBuffer();
+    this.ansiParser = new AnsiParser(this.cols, this.rows);
 
     this.ptyProcess.onData((data) => {
       this.rawBuffer += data;
-      this.processOutput(data);
+      this.ansiParser.processOutput(data);
       this.emit('data', data);
     });
 
@@ -189,255 +179,16 @@ export class PtyManager extends EventEmitter {
   }
 
   /**
-   * Process terminal output and update screen buffer
-   * This is a simplified ANSI parser - handles common sequences
-   */
-  private processOutput(data: string): void {
-    let i = 0;
-    while (i < data.length) {
-      const char = data[i];
-
-      if (char === '\x1b') {
-        // ESC sequence
-        const remaining = data.slice(i);
-
-        // CSI sequence: ESC [ ... letter
-        const csiMatch = remaining.match(/^\x1b\[([0-9;]*)([A-Za-z@`])/);
-        if (csiMatch) {
-          this.handleCSI(csiMatch[1], csiMatch[2]);
-          i += csiMatch[0].length;
-          continue;
-        }
-
-        // OSC sequence: ESC ] ... BEL or ST
-        const oscMatch = remaining.match(/^\x1b\].*?(?:\x07|\x1b\\)/);
-        if (oscMatch) {
-          i += oscMatch[0].length;
-          continue;
-        }
-
-        // Simple ESC sequences
-        if (remaining.length > 1) {
-          const next = remaining[1];
-          if (next === 'c') {
-            // Reset
-            this.initializeBuffer();
-            i += 2;
-            continue;
-          }
-          if (next === '7') {
-            // Save cursor (ignore for now)
-            i += 2;
-            continue;
-          }
-          if (next === '8') {
-            // Restore cursor (ignore for now)
-            i += 2;
-            continue;
-          }
-          if (next === '(' || next === ')') {
-            // Character set selection
-            i += 3;
-            continue;
-          }
-        }
-
-        i++;
-        continue;
-      }
-
-      // Control characters
-      if (char === '\r') {
-        this.cursorCol = 0;
-        i++;
-        continue;
-      }
-
-      if (char === '\n') {
-        this.cursorRow++;
-        if (this.cursorRow >= this.rows) {
-          // Scroll up
-          this.screenBuffer.shift();
-          this.screenBuffer.push(''.padEnd(this.cols, ' '));
-          this.cursorRow = this.rows - 1;
-        }
-        i++;
-        continue;
-      }
-
-      if (char === '\b') {
-        if (this.cursorCol > 0) this.cursorCol--;
-        i++;
-        continue;
-      }
-
-      if (char === '\t') {
-        this.cursorCol = Math.min(this.cols - 1, (Math.floor(this.cursorCol / 8) + 1) * 8);
-        i++;
-        continue;
-      }
-
-      if (char === '\x07') {
-        // Bell - ignore
-        i++;
-        continue;
-      }
-
-      // Printable character
-      if (char >= ' ') {
-        this.putChar(char);
-        i++;
-        continue;
-      }
-
-      // Skip other control characters
-      i++;
-    }
-  }
-
-  /**
-   * Handle CSI (Control Sequence Introducer) sequences
-   */
-  private handleCSI(params: string, command: string): void {
-    const args = params ? params.split(';').map((n) => parseInt(n, 10) || 0) : [];
-
-    switch (command) {
-      case 'H': // Cursor position
-      case 'f':
-        this.cursorRow = Math.max(0, Math.min(this.rows - 1, (args[0] || 1) - 1));
-        this.cursorCol = Math.max(0, Math.min(this.cols - 1, (args[1] || 1) - 1));
-        break;
-
-      case 'A': // Cursor up
-        this.cursorRow = Math.max(0, this.cursorRow - (args[0] || 1));
-        break;
-
-      case 'B': // Cursor down
-        this.cursorRow = Math.min(this.rows - 1, this.cursorRow + (args[0] || 1));
-        break;
-
-      case 'C': // Cursor forward
-        this.cursorCol = Math.min(this.cols - 1, this.cursorCol + (args[0] || 1));
-        break;
-
-      case 'D': // Cursor back
-        this.cursorCol = Math.max(0, this.cursorCol - (args[0] || 1));
-        break;
-
-      case 'J': // Erase in display
-        {
-          const mode = args[0] || 0;
-          if (mode === 0) {
-            // Clear from cursor to end
-            this.clearLine(this.cursorRow, this.cursorCol, this.cols);
-            for (let r = this.cursorRow + 1; r < this.rows; r++) {
-              this.screenBuffer[r] = ''.padEnd(this.cols, ' ');
-            }
-          } else if (mode === 1) {
-            // Clear from start to cursor
-            for (let r = 0; r < this.cursorRow; r++) {
-              this.screenBuffer[r] = ''.padEnd(this.cols, ' ');
-            }
-            this.clearLine(this.cursorRow, 0, this.cursorCol + 1);
-          } else if (mode === 2 || mode === 3) {
-            // Clear entire screen
-            this.initializeBuffer();
-          }
-        }
-        break;
-
-      case 'K': // Erase in line
-        {
-          const mode = args[0] || 0;
-          if (mode === 0) {
-            this.clearLine(this.cursorRow, this.cursorCol, this.cols);
-          } else if (mode === 1) {
-            this.clearLine(this.cursorRow, 0, this.cursorCol + 1);
-          } else if (mode === 2) {
-            this.screenBuffer[this.cursorRow] = ''.padEnd(this.cols, ' ');
-          }
-        }
-        break;
-
-      case 'm': // SGR (Select Graphic Rendition) - colors/styles, ignore
-        break;
-
-      case 'r': // Set scrolling region - ignore for now
-        break;
-
-      case 'h': // Set mode
-      case 'l': // Reset mode
-        // Ignore mode changes
-        break;
-
-      case '@': // Insert characters
-        {
-          const count = args[0] || 1;
-          const line = this.screenBuffer[this.cursorRow];
-          const before = line.slice(0, this.cursorCol);
-          const after = line.slice(this.cursorCol, -count || undefined);
-          this.screenBuffer[this.cursorRow] = (before + ''.padEnd(count, ' ') + after).slice(0, this.cols);
-        }
-        break;
-
-      case 'P': // Delete characters
-        {
-          const count = args[0] || 1;
-          const line = this.screenBuffer[this.cursorRow];
-          const before = line.slice(0, this.cursorCol);
-          const after = line.slice(this.cursorCol + count);
-          this.screenBuffer[this.cursorRow] = (before + after).padEnd(this.cols, ' ');
-        }
-        break;
-    }
-  }
-
-  /**
-   * Put a character at the current cursor position
-   */
-  private putChar(char: string): void {
-    if (this.cursorRow < 0 || this.cursorRow >= this.rows) return;
-
-    const line = this.screenBuffer[this.cursorRow];
-    const before = line.slice(0, this.cursorCol);
-    const after = line.slice(this.cursorCol + 1);
-    this.screenBuffer[this.cursorRow] = before + char + after;
-
-    this.cursorCol++;
-    if (this.cursorCol >= this.cols) {
-      this.cursorCol = 0;
-      this.cursorRow++;
-      if (this.cursorRow >= this.rows) {
-        // Scroll
-        this.screenBuffer.shift();
-        this.screenBuffer.push(''.padEnd(this.cols, ' '));
-        this.cursorRow = this.rows - 1;
-      }
-    }
-  }
-
-  /**
-   * Clear part of a line
-   */
-  private clearLine(row: number, start: number, end: number): void {
-    if (row < 0 || row >= this.rows) return;
-    const line = this.screenBuffer[row];
-    const before = line.slice(0, start);
-    const cleared = ''.padEnd(end - start, ' ');
-    const after = line.slice(end);
-    this.screenBuffer[row] = before + cleared + after;
-  }
-
-  /**
    * Get the current screen content
    */
   getScreen(): ScreenBuffer {
+    const state = this.ansiParser.getState();
     return {
-      lines: [...this.screenBuffer],
-      cursorRow: this.cursorRow,
-      cursorCol: this.cursorCol,
-      cols: this.cols,
-      rows: this.rows,
+      lines: state.lines,
+      cursorRow: state.cursorRow,
+      cursorCol: state.cursorCol,
+      cols: state.cols,
+      rows: state.rows,
     };
   }
 
@@ -445,7 +196,7 @@ export class PtyManager extends EventEmitter {
    * Get screen content as a single string
    */
   getScreenText(): string {
-    return this.screenBuffer.map((line) => line.trimEnd()).join('\n');
+    return this.ansiParser.getScreenText();
   }
 
   /**
@@ -519,18 +270,7 @@ export class PtyManager extends EventEmitter {
       this.ptyProcess.resize(cols, rows);
     }
 
-    // Resize buffer
-    while (this.screenBuffer.length < rows) {
-      this.screenBuffer.push(''.padEnd(cols, ' '));
-    }
-    while (this.screenBuffer.length > rows) {
-      this.screenBuffer.pop();
-    }
-    this.screenBuffer = this.screenBuffer.map((line) => {
-      if (line.length < cols) return line.padEnd(cols, ' ');
-      if (line.length > cols) return line.slice(0, cols);
-      return line;
-    });
+    this.ansiParser.resize(cols, rows);
   }
 
   /**

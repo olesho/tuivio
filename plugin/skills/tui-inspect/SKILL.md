@@ -24,13 +24,25 @@ Capture and analyze the current state of the running TUI application.
 
 When the user invokes this skill:
 
-1. Check for running tuivio sessions:
+1. Check for a live tuivio-record session first:
+
+```bash
+tuivio-discover --json 2>/dev/null
+```
+
+2a. If a live session is found, use the socket to get the screen:
+
+```bash
+echo '{"type":"screen"}' | nc -U <socketPath from discover output>
+```
+
+2b. Otherwise, fall back to tmux. Check for running tuivio sessions:
 
 ```bash
 tmux list-sessions 2>/dev/null | grep tuivio
 ```
 
-2. Capture the screen (use provided session name, or default `tuivio`):
+Then capture the screen (use provided session name, or default `tuivio`):
 
 ```bash
 tmux capture-pane -t tuivio -p

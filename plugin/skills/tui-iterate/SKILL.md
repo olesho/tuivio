@@ -28,12 +28,22 @@ When the user invokes this skill:
 1. **Analyze the issue** - Understand what's broken based on the description and previous screen views
 2. **Locate the code** - Find the relevant file(s) to fix
 3. **Make the fix** - Use Edit tool to modify the code
-4. **Restart the TUI** - Kill, relaunch, wait, and capture:
+4. **Restart the TUI** - Check for a live session first, otherwise use tmux:
 
 ```bash
-tmux kill-session -t tuivio 2>/dev/null
-tmux new-session -d -s tuivio -x 80 -y 24 '<same command as before>'
-sleep 1
+# Check for live tuivio-record session
+tuivio-discover --json 2>/dev/null
+```
+
+If a live session exists, use socket commands to interact and verify:
+```bash
+echo '{"type":"screen"}' | nc -U <socketPath>
+echo '{"type":"keys","input":"..."}' | nc -U <socketPath>
+```
+
+Otherwise, restart using `tuivio-start` (do NOT use `tmux new-session` directly):
+```bash
+tuivio-start <same command as before>
 tmux capture-pane -t tuivio -p
 ```
 

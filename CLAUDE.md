@@ -57,6 +57,25 @@ The `server/` directory contains an MCP server that can be used as an alternativ
 cd server && npm install && npm run build && npm link
 ```
 
+## Recording & Debugging
+
+The recording system captures TUI sessions for AI-assisted debugging:
+
+```bash
+# Record a TUI session (transparent PTY proxy)
+cd server && npm run build && npm link
+tuivio-record python3 app.py
+
+# Add markers from another terminal
+tuivio-mark "Bug happens here"
+
+# Summarize a recording for AI context
+tuivio-summarize recording.jsonl
+tuivio-summarize recording.jsonl --full
+```
+
+Use the `/tui-replay` skill in Claude Code to analyze recordings.
+
 ## Plugin Development
 
 ```bash

@@ -20,7 +20,7 @@ All TUI interaction happens via `tmux` commands through the Bash tool.
 
 | Action | Command |
 |--------|---------|
-| Launch TUI | `tmux new-session -d -s tuivio -x 80 -y 24 'cmd args'` |
+| Launch TUI | `tuivio-start cmd args` |
 | View screen | `tmux capture-pane -t tuivio -p` |
 | Type text | `tmux send-keys -t tuivio -l 'text'` |
 | Press key | `tmux send-keys -t tuivio KeyName` |
@@ -48,9 +48,8 @@ All TUI interaction happens via `tmux` commands through the Bash tool.
 ## Core Workflow
 
 1. **Write** - Create or modify TUI code
-2. **Launch** - Start the TUI: `tmux new-session -d -s tuivio -x 80 -y 24 'command'`
-3. **Wait** - Allow time for rendering: `sleep 1`
-4. **View** - Capture the screen: `tmux capture-pane -t tuivio -p`
+2. **Launch** - Start the TUI: `tuivio-start command args`
+3. **View** - Capture the screen: `tmux capture-pane -t tuivio -p`
 5. **Analyze** - Check for correct rendering, errors, or crashes
 6. **Iterate** - Fix issues and repeat
 
@@ -58,10 +57,11 @@ All TUI interaction happens via `tmux` commands through the Bash tool.
 
 ### Launching a TUI
 
+IMPORTANT: Always use `tuivio-start` to launch TUIs. Do NOT use `tmux new-session` directly.
+`tuivio-start` handles tmux session setup AND enables recording/live-attach.
+
 ```bash
-tmux kill-session -t tuivio 2>/dev/null
-tmux new-session -d -s tuivio -x 80 -y 24 'python3 app.py'
-sleep 1
+tuivio-start python3 app.py
 tmux capture-pane -t tuivio -p
 ```
 
@@ -94,8 +94,8 @@ After viewing the screen, look for:
 ### Multi-Terminal Testing
 
 ```bash
-tmux new-session -d -s tuivio -x 80 -y 24 'python3 server.py'
-tmux new-session -d -s tuivio-2 -x 80 -y 24 'python3 client.py'
+tuivio-start python3 server.py
+tuivio-start --name tuivio-2 python3 client.py
 tmux capture-pane -t tuivio -p
 tmux capture-pane -t tuivio-2 -p
 ```
@@ -124,3 +124,110 @@ tmux capture-pane -t tuivio-2 -p
 - If text input fails, ensure focus is on an input field
 - Use `tmux list-sessions 2>/dev/null | grep tuivio` to see all tuivio sessions
 - Use `tmux display-message -t tuivio -p '#{pane_width}x#{pane_height}'` to verify dimensions
+
+## Live Session Communication
+
+When a TUI is running under `tuivio-record`, you can communicate with it directly via a Unix socket — no tmux required.
+
+### Discovering Live Sessions
+
+```bash
+# Human-readable table
+tuivio-discover
+
+# JSON output for scripting
+tuivio-discover --json
+```
+
+### Socket Commands
+
+```bash
+# Get current screen content
+echo '{"type":"screen"}' | nc -U .tuivio/live-<pid>.sock
+
+# Get session status (uptime, event counts)
+echo '{"type":"status"}' | nc -U .tuivio/live-<pid>.sock
+
+# Send keystrokes (e.g., Down arrow)
+echo '{"type":"keys","input":"\x1b[B"}' | nc -U .tuivio/live-<pid>.sock
+
+# Add a marker to the recording
+echo '{"type":"marker","label":"Bug happens here"}' | nc -U .tuivio/live-<pid>.sock
+
+# Resize the terminal
+echo '{"type":"resize","cols":120,"rows":40}' | nc -U .tuivio/live-<pid>.sock
+```
+
+### When to Use Live Socket vs tmux
+
+- **Live socket**: When the TUI is running under `tuivio-record`. Gives you screen content with cursor position, records all injected keys, and adds markers to the recording.
+- **tmux**: When the TUI is running in a tmux session without `tuivio-record`. Standard workflow for development.
+
+Always check `tuivio-discover --json` first — if a live session exists, prefer the socket.
+
+## Live Session Attachment
+
+When a TUI is running under `tuivio-record`, a human can attach from another terminal to watch (and optionally interact with) the session in real-time.
+
+```bash
+# Attach to the running session (auto-discovers)
+tuivio-attach
+
+# Watch-only mode (no input forwarding)
+tuivio-attach --read-only
+
+# Attach to a specific session by PID
+tuivio-attach --pid 12345
+```
+
+- The attached terminal shows the exact same TUI output in real-time
+- Keystrokes from the attacher are forwarded to the TUI and recorded as `[attach]` input
+- Press Ctrl+C twice to detach — the recording continues
+- Multiple attachers can connect simultaneously
+
+This is useful for:
+- Human developers watching what Claude Code is doing with a TUI
+- Humans navigating to a buggy state, then handing back to Claude Code
+- Pair debugging sessions
+
+## Recording & Replay Workflow
+
+For debugging user-reported bugs, use the recording system:
+
+### Recording a Session (user does this)
+
+```bash
+# Record a TUI session — transparent proxy that captures keystrokes and screen state
+tuivio-record python3 app.py
+
+# Add markers from another terminal when a bug occurs
+tuivio-mark "Bug: list doesn't scroll"
+```
+
+This produces a `.jsonl` recording file with timestamped inputs and screen snapshots.
+
+### Replaying & Debugging (AI does this)
+
+Use the `/tui-replay` skill to analyze a recording:
+```
+/tui-replay recording.jsonl "Description of the bug"
+```
+
+Or manually:
+```bash
+# Get a human-readable summary of a recording
+tuivio-summarize recording.jsonl
+
+# Full detail (every event)
+tuivio-summarize recording.jsonl --full
+```
+
+### Recording Format
+
+The JSONL file contains these event types:
+- `header` — command, cwd, terminal size, start time
+- `input` — timestamped keystrokes with decoded key names
+- `screen` — screen snapshots (full or diff from previous)
+- `marker` — user-placed markers indicating points of interest
+- `resize` — terminal resize events
+- `footer` — session summary (duration, exit code, event counts)
