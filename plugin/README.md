@@ -7,7 +7,7 @@ A Claude Code plugin that provides a visual feedback loop for TUI (Terminal User
 - **Visual Feedback Loop**: Write code → Launch TUI → View screen → Analyze → Iterate
 - **Tuivio Agent**: Specialized agent for TUI development tasks
 - **Skills**: Quick commands for common TUI workflows
-- **MCP Integration**: Uses the Tuivio MCP server for terminal control
+- **tmux-based**: Uses tmux via Bash tool for terminal control — no server required
 
 ## Installation
 
@@ -73,28 +73,25 @@ Fix an issue and restart to verify the fix.
 /tui-iterate crash when pressing enter
 ```
 
+### `/tui-attach`
+
+Connect to an externally-running TUI session (started via `tuivio-record`).
+
+```
+/tui-attach
+```
+
+### `/tui-replay`
+
+Analyze a `.jsonl` recording file to diagnose bugs.
+
+```
+/tui-replay recording.jsonl
+```
+
 ## Agent
 
-The `tuivio-dev` agent is specialized for TUI development. It has access to:
-
-- File manipulation tools (Read, Write, Edit, Glob, Grep)
-- Bash for running commands
-- All Tuivio MCP tools for terminal control
-
-### MCP Tools Available
-
-| Tool | Purpose |
-|------|---------|
-| `run_tui` | Launch a TUI application |
-| `stop_tui` | Stop the current TUI |
-| `view_screen` | Capture terminal screen |
-| `type_text` | Send text input |
-| `press_key` | Send key press |
-| `wait` | Wait for rendering |
-| `get_screen_size` | Get terminal dimensions |
-| `create_process` | Launch in new tab |
-| `kill_process` | Terminate a terminal |
-| `list_tabs` | List active terminals |
+The `tuivio-dev` agent is specialized for TUI development. It uses tmux commands via the Bash tool for all terminal control.
 
 ## Workflow Example
 
@@ -109,8 +106,8 @@ The `tuivio-dev` agent is specialized for TUI development. It has access to:
    ```
 
 3. **Test interaction**:
-   - The agent will use `press_key` and `type_text` to test the UI
-   - View the screen after each action
+   - The agent uses tmux `send-keys` to test the UI
+   - Captures the screen after each action
 
 4. **Fix issues**:
    ```
@@ -135,13 +132,15 @@ plugin/
 ├── skills/
 │   ├── tui-run/SKILL.md      # Launch TUI
 │   ├── tui-inspect/SKILL.md  # View screen
-│   └── tui-iterate/SKILL.md  # Fix and verify
-├── .mcp.json                 # MCP server config
+│   ├── tui-iterate/SKILL.md  # Fix and verify
+│   ├── tui-attach/SKILL.md   # Connect to external session
+│   └── tui-replay/SKILL.md   # Analyze recordings
+├── .mcp.json                 # Plugin config
 └── README.md                 # This file
 ```
 
 ## Requirements
 
 - Claude Code CLI
-- Node.js v18+
-- Git (for installation)
+- tmux
+- Node.js v18+ (for CLI tools)

@@ -1,198 +1,155 @@
 # Tuivio
 
-MCP server and Claude Code plugin for TUI (Terminal User Interface) application development with visual feedback.
+A Claude Code plugin for TUI (Terminal User Interface) development with visual feedback. Write code, launch your TUI, see the screen, and iterate — all within Claude Code.
 
-## Overview
+## How It Works
 
-Tuivio provides two components:
+Tuivio gives Claude Code the ability to see and interact with terminal UIs. Two workflows are supported:
 
-1. **MCP Server** (`server/`) - A generic Model Context Protocol server for controlling TUI applications. Can be used by any MCP-compatible client.
+### Claude-launched (recommended for development)
 
-2. **Claude Code Plugin** (`plugin/`) - A plugin for Claude Code that provides agents and skills for TUI development workflows.
-
-## Development Lifecycle
+Claude starts the TUI, views the screen, and iterates on the code:
 
 ```
-════════════════════════════════════════════════════════════════════════
-              TUIVIO SERVER is started by Coding Agent
-════════════════════════════════════════════════════════════════════════
-
-┌────────────────┐
-│  WRITE/BUILD   │◄─────────────────────────────────────┐
-│     Code       │                                      │
-└───────┬────────┘                                      │
-        │                                               │
-        ▼                                               │
- ╔═════════════════════════════════════════════╗        │
- ║         INTERACTION (TUI running)           ║        │
- ║                                             ║        │
- ║    ┌──────────────┐      ┌───────────┐      ║        │
- ║    │ VIEW SCREEN  │◄────►│ INTERACT  │      ║        │
- ║    │              │      │ (keys/txt)│      ║        │
- ║    └──────────────┘      └───────────┘      ║        │
- ║                                             ║        │
- ╚══════════════════════╤══════════════════════╝        │
-                        │                               │
-                        ▼                               │
-                 ┌─────────────┐                        │
-                 │   ANALYZE   │────────────────────────┘
-                 └─────────────┘
+/tui-run python3 todo.py
 ```
 
-The coding agent (Claude Code) runs the TUI application via Tuivio's MCP server, then repeatedly views the screen and interacts with it. After interaction, the agent analyzes the results and loops back to write/build code as needed.
+Claude launches the app in tmux, captures the screen, and reports what it sees. Use `/tui-iterate` to fix issues with immediate visual verification.
 
-## Quick Start (Claude Code)
+### User-launched (for debugging existing apps)
 
-**Add the Tuivio marketplace source:**
+You run the app yourself; Claude connects to observe and help:
 
 ```bash
-/plugin marketplace add olesho/tuivio
+# In your terminal
+tuivio-record python3 todo.py
 ```
 
-This adds the marketplace configuration from https://github.com/olesho/tuivio.
+```
+# In Claude Code
+/tui-attach
+```
 
-**Install the plugin:**
+Claude connects to the live session, sees the screen, and can send input. Useful for debugging apps that are already running or need specific environment setup.
+
+## Installation
+
+### Plugin
 
 ```bash
-/plugin install tuivio-tui-dev@tuivio-marketplace --scope user
+claude plugin install tuivio-tui-dev@tuivio-marketplace
 ```
 
-For manual installation or standalone server usage, see [Installation Guide](docs/installation.md).
+### CLI Tools
 
-## Project Structure
-
-```
-tuivio/
-├── server/           # MCP Server (generic, reusable)
-│   ├── src/          # TypeScript source
-│   ├── dist/         # Compiled JavaScript
-│   └── package.json  # Server dependencies
-├── plugin/           # Claude Code Plugin
-│   ├── .mcp.json     # MCP server configuration
-│   ├── agents/       # Agent definitions
-│   └── skills/       # Skill definitions
-├── examples/         # Sample TUI applications
-│   └── sample-tui/   # Test app using blessed
-└── install-plugin.sh # Installation script
+```bash
+cd server && npm install && npm run build && npm link
 ```
 
-## MCP Server
+This installs `tuivio-start`, `tuivio-record`, `tuivio-attach`, and other CLI tools globally.
 
-The MCP server provides 10 tools for TUI interaction:
+### Prerequisites
+
+- **tmux** — install via `brew install tmux` or `apt install tmux`
+- **Node.js** v18+ — for CLI tools
+
+## Skills
+
+| Skill | Description |
+|-------|-------------|
+| `/tui-run <command>` | Launch a TUI app and view its initial screen |
+| `/tui-inspect` | View and analyze the current TUI screen state |
+| `/tui-iterate <issue>` | Fix a TUI issue and restart to verify the fix |
+| `/tui-attach` | Connect to an externally-running TUI session |
+| `/tui-replay <file>` | Analyze a `.jsonl` recording to diagnose bugs |
+
+## CLI Tools
+
+Installed from the `server/` package via `npm link`:
 
 | Tool | Description |
 |------|-------------|
-| `run_tui` | Launch a TUI application |
-| `stop_tui` | Stop the current TUI |
-| `view_screen` | Capture terminal screen as text |
-| `type_text` | Send text input |
-| `press_key` | Send key presses (arrows, enter, ctrl+c, etc.) |
-| `wait` | Wait for rendering |
-| `get_screen_size` | Get terminal dimensions |
-| `create_process` | Launch TUI in a new terminal tab |
-| `kill_process` | Terminate a terminal |
-| `list_tabs` | List all active terminals |
+| `tuivio-start <command>` | Launch a TUI inside tmux with recording support |
+| `tuivio-record <command>` | Record a TUI session as JSONL for later analysis |
+| `tuivio-attach` | Attach to a live `tuivio-record` session (watch or interact) |
+| `tuivio-discover` | Find active `tuivio-record` sessions |
+| `tuivio-mark <label>` | Add a marker to an active recording |
+| `tuivio-summarize <file>` | Summarize a recording file for AI context |
 
-### Using the Server Standalone
+## Quick Start
 
-The MCP server can be used independently of the Claude Code plugin:
+1. **Create a TUI app**:
+   ```
+   Create a TODO list TUI in Python using curses
+   ```
 
-```bash
-cd server
-npm install
-npm run build
+2. **Launch and view**:
+   ```
+   /tui-run python3 todo.py
+   ```
 
-# Run directly
-node dist/index.js
+3. **Fix issues**:
+   ```
+   /tui-iterate the menu is not centered
+   ```
 
-# Or install globally
-npm link
-tuivio-server
-```
+4. **Inspect anytime**:
+   ```
+   /tui-inspect
+   ```
 
-### Server Options
+## Recording & Debugging
 
-```
-tuivio-server [options] [command] [args...]
-
-Options:
-  --cols <n>           Terminal width (default: 80)
-  --rows <n>           Terminal height (default: 24)
-  --cwd <path>         Working directory
-  --live               Live display to stderr (TTY only)
-  --live-file <path>   Write live display to file
-  --log-file <path>    Log tool calls to file
-```
-
-## Claude Code Plugin
-
-The plugin provides:
-
-- **tuivio-dev Agent** - Specialized agent for TUI development
-- **Skills**:
-  - `/tui-run` - Launch a TUI and view its screen
-  - `/tui-inspect` - View current screen state
-  - `/tui-iterate` - Fix issues with visual verification
-
-See [plugin/README.md](plugin/README.md) for detailed plugin documentation.
-
-## Installation Options
-
-### Global Installation (Recommended)
+Record a TUI session to capture the exact sequence of inputs and screen states:
 
 ```bash
-./install-plugin.sh --global
+# Record a session
+tuivio-record python3 app.py
+
+# Mark important moments from another terminal
+tuivio-mark "Bug happens here"
+
+# Summarize for AI analysis
+tuivio-summarize recording.jsonl
 ```
 
-This installs `tuivio-server` as a global command and configures the plugin to use it.
-
-### Local Development
-
-```bash
-./install-plugin.sh --local
-```
-
-This configures the plugin with absolute paths to the local build.
-
-## Development
-
-### Building the Server
-
-```bash
-cd server
-npm install
-npm run build
-```
-
-### Running the Sample TUI
-
-```bash
-cd examples/sample-tui
-npm install
-npm start
-```
-
-### Development Mode
-
-```bash
-cd server
-npm run dev  # Watches for changes and restarts
-```
-
-## Requirements
-
-- Node.js v18+
-- Claude Code CLI (for the plugin)
+Then use `/tui-replay recording.jsonl` in Claude Code to get AI-assisted diagnosis.
 
 ## Supported TUI Frameworks
 
-The server works with any terminal application:
+Works with any terminal application:
 
 - **Python**: curses, textual, rich, prompt_toolkit
 - **Node.js**: blessed, ink, terminal-kit
 - **Go**: bubbletea, tview, termui
 - **Rust**: ratatui, crossterm, cursive
-- Any other terminal-based application
+
+## Architecture
+
+Tuivio is a pure plugin — no server required. The plugin provides agent markdown and skill definitions that Claude Code executes using its built-in Bash tool.
+
+```
+Claude Code -> Plugin Skills -> Bash tool -> tuivio-start/tmux -> TUI App
+                                                    |
+                                              capture-pane -> Screen text -> Claude
+```
+
+### Project Structure
+
+```
+tuivio/
+├── plugin/           # Claude Code Plugin
+│   ├── agents/       # Agent definitions (tuivio-dev)
+│   ├── skills/       # Skill definitions (tui-run, tui-inspect, etc.)
+│   └── hooks/        # SessionStart hook (tmux check)
+├── server/           # CLI Tools package
+│   ├── src/          # TypeScript source
+│   ├── dist/         # Compiled JavaScript
+│   └── package.json  # Dependencies & bin entries
+├── examples/         # Sample TUI applications
+│   └── sample-tui/   # Test app using blessed
+└── install-plugin.sh # Installation script
+```
 
 ## License
 
