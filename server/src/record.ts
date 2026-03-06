@@ -315,7 +315,15 @@ function handleRequest(msg: any): object {
   switch (msg.type) {
     case 'screen': {
       const state = parser.getState();
-      return { ok: true, lines: state.lines, cursorRow: state.cursorRow, cursorCol: state.cursorCol, cols: state.cols, rows: state.rows };
+      return {
+        ok: true,
+        lines: state.lines,
+        cursorRow: state.cursorRow,
+        cursorCol: state.cursorCol,
+        cols: state.cols,
+        rows: state.rows,
+        ...(state.highlights ? { highlights: state.highlights } : {}),
+      };
     }
     case 'status': {
       return {

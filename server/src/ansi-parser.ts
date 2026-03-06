@@ -3,19 +3,42 @@
  * Extracted from pty-manager.ts for reuse in the recording system.
  */
 
+export interface CellStyle {
+  fg: number;       // -1 = default
+  bg: number;       // -1 = default
+  bold: boolean;
+  reverse: boolean;
+}
+
+export interface LineHighlight {
+  line: number;
+  text: string;
+  style: string;  // e.g. "reverse", "bg:cyan", "bold+reverse"
+}
+
 export interface ScreenState {
   lines: string[];
   cursorRow: number;
   cursorCol: number;
   cols: number;
   rows: number;
+  highlights?: LineHighlight[];
 }
+
+const DEFAULT_STYLE: CellStyle = { fg: -1, bg: -1, bold: false, reverse: false };
+
+const COLOR_NAMES: Record<number, string> = {
+  0: 'black', 1: 'red', 2: 'green', 3: 'yellow',
+  4: 'blue', 5: 'magenta', 6: 'cyan', 7: 'white',
+};
 
 export class AnsiParser {
   private screenBuffer: string[] = [];
+  private styleBuffer: CellStyle[][] = [];
   private cursorRow: number = 0;
   private cursorCol: number = 0;
   private pendingWrap: boolean = false;
+  private currentStyle: CellStyle = { ...DEFAULT_STYLE };
 
   constructor(private cols: number = 80, private rows: number = 24) {
     this.initializeBuffer();
@@ -23,8 +46,12 @@ export class AnsiParser {
 
   private initializeBuffer(): void {
     this.screenBuffer = Array(this.rows).fill(''.padEnd(this.cols, ' '));
+    this.styleBuffer = Array.from({ length: this.rows }, () =>
+      Array.from({ length: this.cols }, () => ({ ...DEFAULT_STYLE }))
+    );
     this.cursorRow = 0;
     this.cursorCol = 0;
+    this.currentStyle = { ...DEFAULT_STYLE };
   }
 
   processOutput(data: string): void {
@@ -98,6 +125,10 @@ export class AnsiParser {
         if (this.cursorRow >= this.rows) {
           this.screenBuffer.shift();
           this.screenBuffer.push(''.padEnd(this.cols, ' '));
+          this.styleBuffer.shift();
+          this.styleBuffer.push(
+            Array.from({ length: this.cols }, () => ({ ...DEFAULT_STYLE }))
+          );
           this.cursorRow = this.rows - 1;
         }
         i++;
@@ -170,10 +201,12 @@ export class AnsiParser {
           this.clearLine(this.cursorRow, this.cursorCol, this.cols);
           for (let r = this.cursorRow + 1; r < this.rows; r++) {
             this.screenBuffer[r] = ''.padEnd(this.cols, ' ');
+            this.styleBuffer[r] = Array.from({ length: this.cols }, () => ({ ...DEFAULT_STYLE }));
           }
         } else if (mode === 1) {
           for (let r = 0; r < this.cursorRow; r++) {
             this.screenBuffer[r] = ''.padEnd(this.cols, ' ');
+            this.styleBuffer[r] = Array.from({ length: this.cols }, () => ({ ...DEFAULT_STYLE }));
           }
           this.clearLine(this.cursorRow, 0, this.cursorCol + 1);
         } else if (mode === 2 || mode === 3) {
@@ -190,11 +223,14 @@ export class AnsiParser {
           this.clearLine(this.cursorRow, 0, this.cursorCol + 1);
         } else if (mode === 2) {
           this.screenBuffer[this.cursorRow] = ''.padEnd(this.cols, ' ');
+          this.styleBuffer[this.cursorRow] = Array.from({ length: this.cols }, () => ({ ...DEFAULT_STYLE }));
         }
         break;
       }
 
       case 'm':
+        this.handleSGR(args);
+        break;
       case 'r':
       case 'h':
       case 'l':
@@ -220,6 +256,54 @@ export class AnsiParser {
     }
   }
 
+  private handleSGR(args: number[]): void {
+    if (args.length === 0) args = [0];
+    for (let i = 0; i < args.length; i++) {
+      const code = args[i];
+      if (code === 0) {
+        this.currentStyle = { ...DEFAULT_STYLE };
+      } else if (code === 1) {
+        this.currentStyle.bold = true;
+      } else if (code === 7) {
+        this.currentStyle.reverse = true;
+      } else if (code === 22) {
+        this.currentStyle.bold = false;
+      } else if (code === 27) {
+        this.currentStyle.reverse = false;
+      } else if (code >= 30 && code <= 37) {
+        this.currentStyle.fg = code - 30;
+      } else if (code === 38) {
+        // Extended fg: 38;5;N or 38;2;R;G;B
+        if (args[i + 1] === 5 && args[i + 2] !== undefined) {
+          this.currentStyle.fg = args[i + 2];
+          i += 2;
+        } else if (args[i + 1] === 2 && args[i + 4] !== undefined) {
+          this.currentStyle.fg = 256; // mark as RGB (exact color not tracked)
+          i += 4;
+        }
+      } else if (code === 39) {
+        this.currentStyle.fg = -1;
+      } else if (code >= 40 && code <= 47) {
+        this.currentStyle.bg = code - 40;
+      } else if (code === 48) {
+        // Extended bg: 48;5;N or 48;2;R;G;B
+        if (args[i + 1] === 5 && args[i + 2] !== undefined) {
+          this.currentStyle.bg = args[i + 2];
+          i += 2;
+        } else if (args[i + 1] === 2 && args[i + 4] !== undefined) {
+          this.currentStyle.bg = 256;
+          i += 4;
+        }
+      } else if (code === 49) {
+        this.currentStyle.bg = -1;
+      } else if (code >= 90 && code <= 97) {
+        this.currentStyle.fg = code - 90 + 8; // bright colors
+      } else if (code >= 100 && code <= 107) {
+        this.currentStyle.bg = code - 100 + 8; // bright bg colors
+      }
+    }
+  }
+
   private putChar(char: string): void {
     if (this.cursorRow < 0 || this.cursorRow >= this.rows) return;
 
@@ -232,6 +316,10 @@ export class AnsiParser {
       if (this.cursorRow >= this.rows) {
         this.screenBuffer.shift();
         this.screenBuffer.push(''.padEnd(this.cols, ' '));
+        this.styleBuffer.shift();
+        this.styleBuffer.push(
+          Array.from({ length: this.cols }, () => ({ ...DEFAULT_STYLE }))
+        );
         this.cursorRow = this.rows - 1;
       }
     }
@@ -240,6 +328,7 @@ export class AnsiParser {
     const before = line.slice(0, this.cursorCol);
     const after = line.slice(this.cursorCol + 1);
     this.screenBuffer[this.cursorRow] = before + char + after;
+    this.styleBuffer[this.cursorRow][this.cursorCol] = { ...this.currentStyle };
 
     this.cursorCol++;
     if (this.cursorCol >= this.cols) {
@@ -256,6 +345,9 @@ export class AnsiParser {
     const cleared = ''.padEnd(end - start, ' ');
     const after = line.slice(end);
     this.screenBuffer[row] = before + cleared + after;
+    for (let c = start; c < end && c < this.cols; c++) {
+      this.styleBuffer[row][c] = { ...DEFAULT_STYLE };
+    }
   }
 
   getScreenText(): string {
@@ -266,13 +358,48 @@ export class AnsiParser {
     return this.screenBuffer.map((line) => line.trimEnd());
   }
 
+  getHighlightedLines(): LineHighlight[] {
+    const highlights: LineHighlight[] = [];
+    for (let r = 0; r < this.rows; r++) {
+      const lineText = this.screenBuffer[r].trimEnd();
+      if (!lineText) continue;
+
+      // Check if any visible cell on this line has non-default styling
+      let hasReverse = false;
+      let hasBg = false;
+      let bgColor = -1;
+      let hasBold = false;
+
+      for (let c = 0; c < lineText.length; c++) {
+        const s = this.styleBuffer[r][c];
+        if (s.reverse) hasReverse = true;
+        if (s.bg >= 0) { hasBg = true; bgColor = s.bg; }
+        if (s.bold) hasBold = true;
+      }
+
+      if (hasReverse || hasBg) {
+        const parts: string[] = [];
+        if (hasReverse) parts.push('reverse');
+        if (hasBg) {
+          const name = COLOR_NAMES[bgColor] || (bgColor < 256 ? `color${bgColor}` : 'rgb');
+          parts.push(`bg:${name}`);
+        }
+        if (hasBold) parts.push('bold');
+        highlights.push({ line: r, text: lineText, style: parts.join('+') });
+      }
+    }
+    return highlights;
+  }
+
   getState(): ScreenState {
+    const highlights = this.getHighlightedLines();
     return {
       lines: [...this.screenBuffer],
       cursorRow: this.cursorRow,
       cursorCol: this.cursorCol,
       cols: this.cols,
       rows: this.rows,
+      ...(highlights.length > 0 ? { highlights } : {}),
     };
   }
 
@@ -282,14 +409,23 @@ export class AnsiParser {
 
     while (this.screenBuffer.length < rows) {
       this.screenBuffer.push(''.padEnd(cols, ' '));
+      this.styleBuffer.push(
+        Array.from({ length: cols }, () => ({ ...DEFAULT_STYLE }))
+      );
     }
     while (this.screenBuffer.length > rows) {
       this.screenBuffer.pop();
+      this.styleBuffer.pop();
     }
     this.screenBuffer = this.screenBuffer.map((line) => {
       if (line.length < cols) return line.padEnd(cols, ' ');
       if (line.length > cols) return line.slice(0, cols);
       return line;
+    });
+    this.styleBuffer = this.styleBuffer.map((row) => {
+      while (row.length < cols) row.push({ ...DEFAULT_STYLE });
+      if (row.length > cols) row.length = cols;
+      return row;
     });
   }
 }

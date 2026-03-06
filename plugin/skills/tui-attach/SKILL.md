@@ -29,38 +29,49 @@ tuivio-discover --json
 3. If a session is found, read the screen via the live socket:
 
 ```bash
-echo '{"type":"screen"}' | nc -U <socketPath from discover output>
+printf '{"type":"screen"}\n' | nc -U <socketPath from discover output>
 ```
 
 4. Report what you see:
    - What's displayed on screen
    - UI elements visible
+   - **Check the `highlights` array** — it shows lines with non-default styling (reverse video, background colors). This reveals which menu item is selected, focused elements, etc.
    - Any errors or issues
-   - The socket path (so you can send keys later)
 
-5. Ask the user what they'd like to do next. You can interact with the session using:
+5. Ask the user what they'd like to do next.
+
+## Sending keys
+
+IMPORTANT: Use `printf` (not `echo`) to send keys — escape sequences must be passed correctly.
 
 ```bash
-# Send keystrokes
-echo '{"type":"keys","input":"<key>"}' | nc -U <socketPath>
+# Send Up arrow
+printf '{"type":"keys","input":"\\u001b[A"}\n' | nc -U <socketPath>
 
-# Read screen again
-echo '{"type":"screen"}' | nc -U <socketPath>
+# Send Down arrow
+printf '{"type":"keys","input":"\\u001b[B"}\n' | nc -U <socketPath>
 
-# Add a marker to the recording
-echo '{"type":"marker","label":"description"}' | nc -U <socketPath>
+# Send Enter
+printf '{"type":"keys","input":"\\r"}\n' | nc -U <socketPath>
+
+# Send Escape
+printf '{"type":"keys","input":"\\u001b"}\n' | nc -U <socketPath>
+
+# Send Tab
+printf '{"type":"keys","input":"\\t"}\n' | nc -U <socketPath>
+
+# Send a text string
+printf '{"type":"keys","input":"hello"}\n' | nc -U <socketPath>
 ```
 
-### Common key escape sequences
+After sending keys, always read the screen again to see the result. Pay attention to `highlights` to detect selection changes.
 
-| Key       | Escape sequence |
-|-----------|----------------|
-| Enter     | `\r`           |
-| Escape    | `\u001b`       |
-| Tab       | `\t`           |
-| Up        | `\u001b[A`     |
-| Down      | `\u001b[B`     |
-| Right     | `\u001b[C`     |
-| Left      | `\u001b[D`     |
-| Backspace | `\u007f`       |
-| Ctrl+C    | `\u0003`       |
+## Other socket commands
+
+```bash
+# Add a marker to the recording
+printf '{"type":"marker","label":"description"}\n' | nc -U <socketPath>
+
+# Get session status
+printf '{"type":"status"}\n' | nc -U <socketPath>
+```
