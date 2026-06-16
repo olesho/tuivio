@@ -2,6 +2,49 @@
 
 A Claude Code plugin for TUI (Terminal User Interface) development with visual feedback. Write code, launch your TUI, see the screen, and iterate — all within Claude Code.
 
+## Installation
+
+### Prerequisites
+
+- **tmux** — install via `brew install tmux` (macOS) or `apt install tmux` (Linux)
+- **Node.js** v18+ — required for the CLI tools
+
+### 1. Add the marketplace
+
+The plugin is distributed through the `tuivio-marketplace`. Register it with Claude Code first:
+
+```bash
+claude plugin marketplace add olesho/tuivio
+```
+
+To install from a local clone instead, point at the repo directory:
+
+```bash
+claude plugin marketplace add /path/to/tuivio
+```
+
+### 2. Install the plugin
+
+```bash
+claude plugin install tuivio-tui-dev@tuivio-marketplace
+```
+
+### 3. Install the CLI tools
+
+The CLI tools (`tuivio-start`, `tuivio-record`, `tuivio-attach`, and others) are installed from the `server/` package:
+
+```bash
+cd server && npm install && npm run build && npm link
+```
+
+This makes the tools available globally on your `$PATH`.
+
+### Using with Codex
+
+Tuivio is a Claude Code plugin, but its engine (tmux + the `tuivio-*` CLI tools) is plain
+shell and works with OpenAI Codex too. See [`codex/README.md`](codex/README.md) for a
+ported `AGENTS.md` and prompt files.
+
 ## How It Works
 
 Tuivio gives Claude Code the ability to see and interact with terminal UIs. Two workflows are supported:
@@ -31,27 +74,6 @@ tuivio-record python3 todo.py
 ```
 
 Claude connects to the live session, sees the screen, and can send input. Useful for debugging apps that are already running or need specific environment setup.
-
-## Installation
-
-### Plugin
-
-```bash
-claude plugin install tuivio-tui-dev@tuivio-marketplace
-```
-
-### CLI Tools
-
-```bash
-cd server && npm install && npm run build && npm link
-```
-
-This installs `tuivio-start`, `tuivio-record`, `tuivio-attach`, and other CLI tools globally.
-
-### Prerequisites
-
-- **tmux** — install via `brew install tmux` or `apt install tmux`
-- **Node.js** v18+ — for CLI tools
 
 ## Skills
 
